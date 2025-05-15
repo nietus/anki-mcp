@@ -1,5 +1,7 @@
 # anki-mcp
 
+[![smithery badge](https://smithery.ai/badge/@nietus/anki-mcp)](https://smithery.ai/server/@nietus/anki-mcp)
+
 MCP server for Anki. This server allows interaction with Anki through the Model Context Protocol (MCP). It enables users to manage flashcards, decks, and review processes programmatically.
 
 ## Prerequisites
@@ -8,6 +10,10 @@ MCP server for Anki. This server allows interaction with Anki through the Model 
 - AnkiConnect plugin installed and running in Anki.
 
 ## Setup and Execution
+
+All information can be found here [Anki Integration | Smithery](https://smithery.ai/server/@nietus/anki-mcp)
+
+### To run locally:
 
 1. **Install dependencies:**
 
@@ -24,7 +30,7 @@ MCP server for Anki. This server allows interaction with Anki through the Model 
 
    This command compiles the TypeScript code and makes the client script executable.
 
-3. **Integrate with Cursor settings**
+3. **Integrate with Cursor settings for Windows**
 
    ```
    "anki": {
