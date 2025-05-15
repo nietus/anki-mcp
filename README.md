@@ -2,13 +2,6 @@
 
 MCP server for Anki. This server allows interaction with Anki through the Model Context Protocol (MCP). It enables users to manage flashcards, decks, and review processes programmatically.
 
-## Features
-
-- Manage Cards: Add new cards, update existing cards (including answering and changing ease), and find cards using Anki's search syntax.
-- Manage Decks: Create new decks and retrieve a list of existing deck names.
-- Review Cards: Get lists of due cards and new cards for review.
-- Resource Access: Provides predefined resources to quickly access common card searches like current deck, due cards, and new cards.
-
 ## Prerequisites
 
 - Node.js and npm installed.
@@ -31,26 +24,26 @@ MCP server for Anki. This server allows interaction with Anki through the Model 
 
    This command compiles the TypeScript code and makes the client script executable.
 
-3. **Run the server:**
-   Once built, the server can be started. The `package.json` defines a `bin` entry, suggesting it might be intended to be run as a command-line tool. If linked globally (`npm link`), you might be able to run:
+3. **Integrate with Cursor settings**
 
-   ```bash
-   anki-mcp
    ```
-
-   Alternatively, you can run the built client directly:
-
-   ```bash
-   node build/client.js
-   ```
-
-   You can also use the MCP Inspector for development and testing:
-
-   ```bash
-   npm run inspector
+   "anki": {
+         "command": "cmd",
+         "args": [
+           "/c",
+           "node",
+           "c:/Users/-/Downloads/anki-mcp/build/client.js"
+         ]
+       }
    ```
 
 ## Available Tools
+
+To debug the tools, use
+
+```
+npm run inspector
+```
 
 The server provides the following tools for interacting with Anki:
 
