@@ -11,7 +11,7 @@ MCP server for Anki. This server allows interaction with Anki through the Model 
 
 ## Setup and Execution
 
-All information can be found here [Anki Integration | Smithery](https://smithery.ai/server/@nietus/anki-mcp)
+Highly recommended to run locally, since anki connect only works locally
 
 ### To run locally:
 
@@ -102,3 +102,5 @@ The server provides the following tools for interacting with Anki:
 
   - Description: Update specific fields for multiple Anki notes.
   - Input: An array of `notes`, where each note has `noteId` (number) and `fields` (object).
+
+More information can be found here [Anki Integration | Smithery](https://smithery.ai/server/@nietus/anki-mcp)
