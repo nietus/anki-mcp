@@ -1,4 +1,5 @@
 # anki-mcp
+[![smithery badge](https://smithery.ai/badge/@nietus/anki-mcp)](https://smithery.ai/server/@nietus/anki-mcp)
 
 MCP server for Anki. This server allows interaction with Anki through the Model Context Protocol (MCP). It enables users to manage flashcards, decks, and review processes programmatically.
 
@@ -9,6 +10,15 @@ MCP server for Anki. This server allows interaction with Anki through the Model 
 
 ## Setup and Execution
 
+### Installing via Smithery
+
+To install anki-mcp for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@nietus/anki-mcp):
+
+```bash
+npx -y @smithery/cli install @nietus/anki-mcp --client claude
+```
+
+### Manual Installation
 1. **Install dependencies:**
 
    ```bash
