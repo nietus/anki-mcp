@@ -1,0 +1,29 @@
+{
+  "name": "anki-mcp",
+  "version": "0.1.0",
+  "description": "A server to integrate with Anki via the AnkiConnect   plugin ",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "anki-mcp": "./build/client.js"
+  },
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').chmodSync('build/client.js', '755')\"",
+    "prepare": "npm run build",
+    "watch": "tsc --watch",
+    "inspector": "npx @modelcontextprotocol/inspector build/client.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "0.6.0",
+    "yanki-connect": "^2.1.8",
+    "dotenv": "^16.4.7",
+    "tsx": "^4.19.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3"
+  }
+}
