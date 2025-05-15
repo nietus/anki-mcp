@@ -87,10 +87,10 @@ async function findCardsAndOrder(ankiQuery) {
     if (allCardIds.length === 0) {
         return []; // No cards match the query
     }
-    // Limit to 100 cards
-    if (allCardIds.length > 100) {
-        console.warn(`[MCP Anki Client] findCardsAndOrder: Query '${ankiQuery}' returned ${allCardIds.length} cards. Limiting to 100.`);
-        allCardIds = allCardIds.slice(0, 100);
+    // Limit to 200 cards
+    if (allCardIds.length > 200) {
+        console.warn(`[MCP Anki Client] findCardsAndOrder: Query '${ankiQuery}' returned ${allCardIds.length} cards. Limiting to 200.`);
+        allCardIds = allCardIds.slice(0, 200);
     }
     // Step 2: Get card info for ALL found IDs
     console.error(`[MCP Anki Client] findCardsAndOrder: Fetching card info for ${allCardIds.length} IDs.`);
@@ -208,6 +208,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                         back: {
                             type: "string",
                             description: "The back of the card. Must use HTML formatting only."
+                        },
+                        deckName: {
+                            type: "string",
+                            description: "Optional: The name of the deck to add the card to. Defaults to 'Default'."
                         }
                     },
                     required: ["front", "back"]
@@ -281,6 +285,49 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     },
                     required: ["noteId", "fields"]
                 }
+            },
+            {
+                name: "create_deck",
+                description: "Create a new Anki deck.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        deckName: {
+                            type: "string",
+                            description: "The name of the deck to create."
+                        }
+                    },
+                    required: ["deckName"]
+                }
+            },
+            {
+                name: "bulk_update_notes",
+                description: "Update specific fields for multiple Anki notes.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        notes: {
+                            type: "array",
+                            description: "An array of notes to update. Each note should have a noteId and a fields object.",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    noteId: {
+                                        type: "number",
+                                        description: "The ID of the Anki note to update."
+                                    },
+                                    fields: {
+                                        type: "object",
+                                        description: "An object where keys are field names and values are the new field content.",
+                                        additionalProperties: { type: "string" }
+                                    }
+                                },
+                                required: ["noteId", "fields"]
+                            }
+                        }
+                    },
+                    required: ["notes"]
+                }
             }
         ]
     };
@@ -316,9 +363,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         case "add_card": {
             const front = String(args.front);
             const back = String(args.back);
+            const deckName = args.deckName ? String(args.deckName) : 'Default';
             const note = {
                 note: {
-                    deckName: 'Default',
+                    deckName: deckName,
                     fields: {
                         Back: back,
                         Front: front,
@@ -379,30 +427,33 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                     content: [{ type: "text", text: JSON.stringify([]) }]
                 };
             }
-            // Limit to 100 cards
-            if (allCardIds.length > 100) {
-                console.warn(`[MCP Anki Client] find-cards: Query "${query}" returned ${allCardIds.length} cards. Limiting to 100.`);
-                allCardIds = allCardIds.slice(0, 100);
+            // Limit to 200 cards
+            if (allCardIds.length > 200) {
+                console.warn(`[MCP Anki Client] find-cards: Query "${query}" returned ${allCardIds.length} cards. Limiting to 200.`);
+                allCardIds = allCardIds.slice(0, 200);
             }
             // Step 2: Get card info for ALL found card IDs
             const cardsInfoRaw = await client.card.cardsInfo({ cards: allCardIds });
             console.error(`[MCP Anki Client] find-cards: Fetched info for ${cardsInfoRaw.length} cards.`);
-            const detailedCardsInfo = cardsInfoRaw.map(card => ({
+            const detailedCardsInfoWithDue = cardsInfoRaw.map(card => ({
                 cardId: card.cardId,
-                noteId: card.note, // note property from AnkiConnect is the note ID
+                noteId: card.note,
                 deckName: card.deckName,
                 modelName: card.modelName,
                 question: cleanWithRegex(card.question),
                 answer: cleanWithRegex(card.answer),
+                due: card.due,
                 fields: Object.fromEntries(Object.entries(card.fields).map(([fieldName, fieldData]) => [
                     fieldName,
                     cleanWithRegex(fieldData.value) // Clean each field's value
                 ]))
             }));
+            // Sort by due date in descending order (newest/latest due first)
+            detailedCardsInfoWithDue.sort((a, b) => b.due - a.due);
             return {
                 content: [{
                         type: "text",
-                        text: JSON.stringify(detailedCardsInfo)
+                        text: JSON.stringify(detailedCardsInfoWithDue)
                     }]
             };
         }
@@ -426,6 +477,53 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         type: "text",
                         text: `Successfully requested update for fields of note ID: ${noteId}`
                     }]
+            };
+        }
+        case "create_deck": {
+            const deckName = String(args.deckName);
+            if (!deckName) {
+                throw new Error("deckName parameter is required for create_deck tool.");
+            }
+            await client.deck.createDeck({ deck: deckName });
+            return {
+                content: [{
+                        type: "text",
+                        text: `Successfully created deck: ${deckName}`
+                    }]
+            };
+        }
+        case "bulk_update_notes": {
+            const notesToUpdate = args.notes;
+            if (!notesToUpdate || !Array.isArray(notesToUpdate) || notesToUpdate.length === 0) {
+                throw new Error("Invalid or empty 'notes' array provided for bulk_update_notes tool.");
+            }
+            const results = [];
+            for (const note of notesToUpdate) {
+                if (isNaN(note.noteId) || !note.fields || Object.keys(note.fields).length === 0) {
+                    results.push({ noteId: note.noteId, success: false, error: "Invalid noteId or empty fields for a note." });
+                    continue;
+                }
+                try {
+                    await client.note.updateNoteFields({
+                        note: {
+                            id: note.noteId,
+                            fields: note.fields,
+                        },
+                    });
+                    results.push({ noteId: note.noteId, success: true });
+                }
+                catch (e) {
+                    results.push({ noteId: note.noteId, success: false, error: e.message });
+                }
+            }
+            const successfulUpdates = results.filter(r => r.success).map(r => r.noteId);
+            const failedUpdates = results.filter(r => !r.success);
+            let summary = `Bulk update process completed. Successfully updated notes: ${successfulUpdates.join(', ') || 'None'}.`;
+            if (failedUpdates.length > 0) {
+                summary += ` Failed updates: ${failedUpdates.map(f => `ID ${f.noteId} (Error: ${f.error})`).join('; ')}.`;
+            }
+            return {
+                content: [{ type: "text", text: summary }]
             };
         }
         default:
