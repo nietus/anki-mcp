@@ -15,13 +15,20 @@ Highly recommended to run locally, since anki connect only works locally
 
 ### To run locally:
 
-1. **Install dependencies:**
+1. **Clone the repository:**
+
+   ```bash
+   git clone https://github.com/nietus/anki-mcp
+   ```
+
+
+2. **Install dependencies:**
 
    ```bash
    npm install
    ```
 
-2. **Build the project:**
+3. **Build the project:**
    The `prepare` script in `package.json` should automatically run the build upon installation. If you need to build manually:
 
    ```bash
@@ -30,7 +37,7 @@ Highly recommended to run locally, since anki connect only works locally
 
    This command compiles the TypeScript code and makes the client script executable.
 
-3. **Integrate with Cursor settings for Windows**
+4. **Integrate with Cursor settings for Windows**
 
    ```
    "anki": {
