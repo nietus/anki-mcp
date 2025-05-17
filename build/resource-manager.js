@@ -55,7 +55,7 @@ function formatQuery(simplifiedQuery) {
     }
     return ankiQuery;
 }
-export function registerResourceHandlers(server, client) {
+export function registerResourceHandlers(server, getClient) {
     /**
      * Handles requests to list available resources (e.g., predefined card searches).
      * These resources can then be read to get card data.
@@ -95,6 +95,7 @@ export function registerResourceHandlers(server, client) {
         if (!simplifiedQuery) {
             throw new Error("Invalid resource URI: unable to extract query from path.");
         }
+        const client = getClient();
         const ankiQuery = formatQuery(simplifiedQuery);
         const cards = await findCardsAndOrder(client, ankiQuery);
         return {

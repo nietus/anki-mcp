@@ -417,7 +417,7 @@ const getDeckModelInfoToolDefinition = {
         required: ["deckName"]
     }
 };
-export function registerToolHandlers(server, client) {
+export function registerToolHandlers(server, getClient) {
     server.setRequestHandler(ListToolsRequestSchema, async () => {
         const tools = [...getToolDefinitions(), getDeckModelInfoToolDefinition];
         return { tools: tools };
@@ -429,6 +429,7 @@ export function registerToolHandlers(server, client) {
         }
         switch (name) {
             case "update_cards": {
+                const client = getClient();
                 const answers = args.answers;
                 const result = await client.card.answerCards({ answers: answers });
                 const successfulCards = answers
@@ -447,6 +448,7 @@ export function registerToolHandlers(server, client) {
                 };
             }
             case "add_card": {
+                const client = getClient();
                 const fields = args.fields;
                 const modelName = String(args.modelName);
                 const deckName = args.deckName ? String(args.deckName) : 'Default'; // Or fetch current deck if possible
@@ -484,6 +486,7 @@ export function registerToolHandlers(server, client) {
                 };
             }
             case "get_due_cards": {
+                const client = getClient();
                 const ankiQuery = "is:due";
                 let allCardIds = await client.card.findCards({ query: ankiQuery });
                 if (allCardIds.length > 200)
@@ -500,6 +503,7 @@ export function registerToolHandlers(server, client) {
                 };
             }
             case "get_new_cards": {
+                const client = getClient();
                 const ankiQuery = "is:new";
                 let allCardIds = await client.card.findCards({ query: ankiQuery });
                 if (allCardIds.length > 200)
@@ -516,12 +520,14 @@ export function registerToolHandlers(server, client) {
                 };
             }
             case "get-deck-names": {
+                const client = getClient();
                 const deckNames = await client.deck.deckNames();
                 return {
                     content: [{ type: "text", text: JSON.stringify(deckNames) }]
                 };
             }
             case "find-cards": {
+                const client = getClient();
                 const query = String(args.query);
                 if (!query) {
                     console.error("[MCP Anki Client] find-cards: Query parameter is required.");
@@ -559,6 +565,7 @@ export function registerToolHandlers(server, client) {
                 };
             }
             case "update-note-fields": {
+                const client = getClient();
                 const noteId = Number(args.noteId);
                 const fieldsToUpdate = args.fields;
                 if (isNaN(noteId)) {
@@ -578,6 +585,7 @@ export function registerToolHandlers(server, client) {
                 };
             }
             case "create_deck": {
+                const client = getClient();
                 const deckName = String(args.deckName);
                 if (!deckName) {
                     throw new Error("deckName parameter is required for create_deck tool.");
@@ -588,6 +596,7 @@ export function registerToolHandlers(server, client) {
                 };
             }
             case "bulk_update_notes": {
+                const client = getClient();
                 const notesToUpdate = args.notes;
                 if (!notesToUpdate || !Array.isArray(notesToUpdate) || notesToUpdate.length === 0) {
                     throw new Error("Invalid or empty 'notes' array provided for bulk_update_notes tool.");
@@ -620,10 +629,12 @@ export function registerToolHandlers(server, client) {
                 return { content: [{ type: "text", text: summary }] };
             }
             case "get_model_names": {
+                const client = getClient();
                 const modelNames = await client.model.modelNames();
                 return { content: [{ type: "text", text: JSON.stringify(modelNames) }] };
             }
             case "get_model_details": {
+                const client = getClient();
                 const modelName = String(args.modelName);
                 if (!modelName)
                     throw new Error("modelName parameter is required.");
@@ -633,6 +644,7 @@ export function registerToolHandlers(server, client) {
                 return { content: [{ type: "text", text: JSON.stringify({ modelName, fieldNames, templates, css }) }] };
             }
             case "add_note_type_field": {
+                const client = getClient();
                 const modelName = String(args.modelName);
                 const fieldName = String(args.fieldName);
                 if (!modelName || !fieldName)
@@ -641,11 +653,11 @@ export function registerToolHandlers(server, client) {
                 if (currentFields.includes(fieldName)) {
                     throw new Error(`Field '${fieldName}' already exists in model '${modelName}'.`);
                 }
-                const updatedFields = [...currentFields, fieldName].map((name, index) => ({ name, ord: index }));
-                await client.model.updateModelFields({ model: { name: modelName, fields: updatedFields } });
+                await client.model.modelFieldAdd({ modelName: modelName, fieldName: fieldName, index: currentFields.length });
                 return { content: [{ type: "text", text: `Successfully added field '${fieldName}' to model '${modelName}'.` }] };
             }
             case "remove_note_type_field": {
+                const client = getClient();
                 const modelName = String(args.modelName);
                 const fieldName = String(args.fieldName);
                 if (!modelName || !fieldName)
@@ -654,13 +666,11 @@ export function registerToolHandlers(server, client) {
                 if (!currentFields.includes(fieldName)) {
                     throw new Error(`Field '${fieldName}' does not exist in model '${modelName}'.`);
                 }
-                const updatedFields = currentFields
-                    .filter(name => name !== fieldName)
-                    .map((name, index) => ({ name, ord: index }));
-                await client.model.updateModelFields({ model: { name: modelName, fields: updatedFields } });
+                await client.model.modelFieldRemove({ modelName: modelName, fieldName: fieldName });
                 return { content: [{ type: "text", text: `Successfully removed field '${fieldName}' from model '${modelName}'.` }] };
             }
             case "rename_note_type_field": {
+                const client = getClient();
                 const modelName = String(args.modelName);
                 const oldFieldName = String(args.oldFieldName);
                 const newFieldName = String(args.newFieldName);
@@ -674,14 +684,11 @@ export function registerToolHandlers(server, client) {
                 if (currentFields.includes(newFieldName) && oldFieldName !== newFieldName) {
                     throw new Error(`Field '${newFieldName}' already exists in model '${modelName}'. Cannot rename.`);
                 }
-                const updatedFields = currentFields.map((name, index) => ({
-                    name: name === oldFieldName ? newFieldName : name,
-                    ord: index
-                }));
-                await client.model.updateModelFields({ model: { name: modelName, fields: updatedFields } });
+                await client.model.modelFieldRename({ modelName: modelName, oldFieldName: oldFieldName, newFieldName: newFieldName });
                 return { content: [{ type: "text", text: `Successfully renamed field '${oldFieldName}' to '${newFieldName}' in model '${modelName}'.` }] };
             }
             case "reposition_note_type_field": {
+                const client = getClient();
                 const modelName = String(args.modelName);
                 const fieldName = String(args.fieldName);
                 const newIndex = Number(args.index);
@@ -695,13 +702,11 @@ export function registerToolHandlers(server, client) {
                 if (newIndex < 0 || newIndex >= currentFields.length) {
                     throw new Error(`Index ${newIndex} is out of bounds for model '${modelName}'. Valid range is 0 to ${currentFields.length - 1}.`);
                 }
-                currentFields = currentFields.filter(f => f !== fieldName);
-                currentFields.splice(newIndex, 0, fieldName);
-                const updatedFields = currentFields.map((name, idx) => ({ name, ord: idx }));
-                await client.model.updateModelFields({ model: { name: modelName, fields: updatedFields } });
+                await client.model.modelFieldReposition({ modelName: modelName, fieldName: fieldName, index: newIndex });
                 return { content: [{ type: "text", text: `Successfully repositioned field '${fieldName}' to index ${newIndex} in model '${modelName}'.` }] };
             }
             case "update_note_type_templates": {
+                const client = getClient();
                 const modelName = String(args.modelName);
                 const templates = args.templates;
                 if (!modelName || !templates)
@@ -710,6 +715,7 @@ export function registerToolHandlers(server, client) {
                 return { content: [{ type: "text", text: `Successfully updated templates for model '${modelName}'.` }] };
             }
             case "update_note_type_styling": {
+                const client = getClient();
                 const modelName = String(args.modelName);
                 const css = String(args.css);
                 if (!modelName || css === undefined)
@@ -718,6 +724,7 @@ export function registerToolHandlers(server, client) {
                 return { content: [{ type: "text", text: `Successfully updated styling for model '${modelName}'.` }] };
             }
             case "create_model": {
+                const client = getClient();
                 const modelName = String(args.modelName);
                 const fieldNames = args.fieldNames;
                 const cardTemplates = args.cardTemplates;
@@ -740,6 +747,7 @@ export function registerToolHandlers(server, client) {
                 return { content: [{ type: "text", text: `Successfully created model '${modelName}'.` }] };
             }
             case "add_bulk": {
+                const client = getClient();
                 const notesInput = args.notes;
                 if (!notesInput || !Array.isArray(notesInput) || notesInput.length === 0) {
                     throw new Error("Invalid or empty 'notes' array provided for add_bulk tool.");
@@ -791,6 +799,7 @@ export function registerToolHandlers(server, client) {
                 };
             }
             case "get_deck_model_info": {
+                const client = getClient();
                 const deckName = String(args.deckName);
                 if (!deckName) {
                     throw new Error("deckName parameter is required for get_deck_model_info tool.");

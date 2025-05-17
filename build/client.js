@@ -3,18 +3,21 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { YankiConnect } from "yanki-connect";
 import { registerResourceHandlers } from "./resource-manager.js";
 import { registerToolHandlers } from "./tool-manager.js";
-// Card interface is now in interfaces.ts and used within resource-manager or tool-manager where needed
-// cleanWithRegex is now in utils.ts and used internally by other modules
 console.error("[MCP Anki Client] Script started.");
-let client;
-try {
-    console.error("[MCP Anki Client] Initializing YankiConnect...");
-    client = new YankiConnect();
-    console.error("[MCP Anki Client] YankiConnect initialized successfully.");
-}
-catch (e) {
-    console.error("[MCP Anki Client] Error initializing YankiConnect:", e.message, e.stack);
-    process.exit(1);
+let ankiClientInstance = null;
+function getAnkiClient() {
+    if (!ankiClientInstance) {
+        console.error("[MCP Anki Client] Initializing YankiConnect on demand...");
+        try {
+            ankiClientInstance = new YankiConnect();
+            console.error("[MCP Anki Client] YankiConnect initialized successfully on demand.");
+        }
+        catch (e) {
+            console.error("[MCP Anki Client] Error initializing YankiConnect on demand:", e.message, e.stack);
+            throw e; // Re-throw to allow callers to handle or report
+        }
+    }
+    return ankiClientInstance;
 }
 /**
  * Create an MCP server with capabilities for resources (to get Anki cards),
@@ -30,9 +33,9 @@ const server = new Server({
     },
 });
 // Register resource handlers from resource-manager.ts
-registerResourceHandlers(server, client);
+registerResourceHandlers(server, getAnkiClient);
 // Register tool handlers from tool-manager.ts
-registerToolHandlers(server, client);
+registerToolHandlers(server, getAnkiClient);
 /**
  * Main function to initialize and start the MCP server.
  * It sets up the StdioServerTransport for communication.
