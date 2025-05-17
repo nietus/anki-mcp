@@ -10,22 +10,24 @@ MCP server for Anki. This server allows interaction with Anki through the Model 
 
 ## Setup and Execution
 
-### Installing via Smithery
+Highly recommended to run locally, since anki connect only works locally
 
-To install anki-mcp for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@nietus/anki-mcp):
+### To run locally:
 
-```bash
-npx -y @smithery/cli install @nietus/anki-mcp --client claude
-```
+1. **Clone the repository:**
 
-### Manual Installation
-1. **Install dependencies:**
+   ```bash
+   git clone https://github.com/nietus/anki-mcp
+   ```
+
+
+2. **Install dependencies:**
 
    ```bash
    npm install
    ```
 
-2. **Build the project:**
+3. **Build the project:**
    The `prepare` script in `package.json` should automatically run the build upon installation. If you need to build manually:
 
    ```bash
@@ -34,7 +36,7 @@ npx -y @smithery/cli install @nietus/anki-mcp --client claude
 
    This command compiles the TypeScript code and makes the client script executable.
 
-3. **Integrate with Cursor settings**
+4. **Integrate with Cursor settings for Windows**
 
    ```
    "anki": {
@@ -64,13 +66,17 @@ The server provides the following tools for interacting with Anki:
 
 - `add_card`:
 
-  - Description: Create a new flashcard in Anki. Must use HTML formatting.
+  - Description: Create a new flashcard in Anki. Note content uses HTML.
     - Line breaks: `<br>`
     - Code: `<pre style="background-color: transparent; padding: 10px; border-radius: 5px;">`
     - Lists: `<ol>` and `<li>`
     - Bold: `<strong>`
     - Italic: `<em>`
-  - Input: `front` (string, HTML), `back` (string, HTML), `deckName` (optional string, defaults to 'Default').
+  - Input:
+    - `fields`: (object) An object where keys are field names (e.g., "Hanzi", "Pinyin") and values are their HTML content.
+    - `modelName`: (string) The name of the Anki note type (model) to use.
+    - `deckName`: (optional string) The name of the deck to add the card to. Defaults to the current deck or 'Default'.
+    - `tags`: (optional array of strings) A list of tags to add to the note.
 
 - `get_due_cards`:
 
@@ -106,3 +112,65 @@ The server provides the following tools for interacting with Anki:
 
   - Description: Update specific fields for multiple Anki notes.
   - Input: An array of `notes`, where each note has `noteId` (number) and `fields` (object).
+
+- `get_model_names`:
+
+  - Description: Lists all available Anki note type/model names.
+  - Input: None.
+
+- `get_model_details`:
+
+  - Description: Retrieves the fields, card templates, and CSS styling for a specified note type.
+  - Input: `modelName` (string).
+
+- `get_deck_model_info`:
+
+  - Description: Retrieves information about the note types (models) used within a specified deck. Helps determine if a single model is used, multiple, or if the deck is empty or non-existent.
+  - Input: `deckName` (string).
+  - Output: An object with `deckName`, `status` (e.g., "single_model_found", "multiple_models_found", "no_notes_found", "deck_not_found"), and conditionally `modelName` (string) or `modelNames` (array of strings).
+
+- `add_note_type_field`:
+
+  - Description: Adds a new field to a note type.
+  - Input: `modelName` (string), `fieldName` (string).
+
+- `remove_note_type_field`:
+
+  - Description: Removes an existing field from a note type.
+  - Input: `modelName` (string), `fieldName` (string).
+
+- `rename_note_type_field`:
+
+  - Description: Renames a field in a note type.
+  - Input: `modelName` (string), `oldFieldName` (string), `newFieldName` (string).
+
+- `reposition_note_type_field`:
+
+  - Description: Changes the order (index) of a field in a note type.
+  - Input: `modelName` (string), `fieldName` (string), `index` (number).
+
+- `update_note_type_templates`:
+
+  - Description: Updates the HTML templates (e.g., front and back) for the cards of a note type.
+  - Input: `modelName` (string), `templates` (object, e.g., `{"Card 1": {"Front": "html", "Back": "html"}}`).
+
+- `update_note_type_styling`:
+
+  - Description: Updates the CSS styling for a note type.
+  - Input: `modelName` (string), `css` (string).
+
+- `create_model`:
+
+  - Description: Creates a new Anki note type (model).
+  - Input: `modelName` (string), `fieldNames` (array of strings), `cardTemplates` (array of objects, each with `Name`, `Front`, `Back` HTML strings), `css` (optional string), `isCloze` (optional boolean, defaults to false), `modelType` (optional string, defaults to 'Standard').
+
+- `add_bulk`:
+
+  - Description: Adds multiple flashcards to Anki in a single operation. Note content uses HTML. This tool is for adding multiple notes (cards) at once.
+  - Input: An array of `notes`, where each note object has:
+    - `fields`: (object) An object where keys are field names and values are their HTML content.
+    - `modelName`: (string) The name of the Anki note type (model) to use for this note.
+    - `deckName`: (optional string) The name of the deck for this note. Defaults to 'Default'.
+    - `tags`: (optional array of strings) A list of tags for this note.
+
+More information can be found here [Anki Integration | Smithery](https://smithery.ai/server/@nietus/anki-mcp)
