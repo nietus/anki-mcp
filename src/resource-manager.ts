@@ -25,9 +25,9 @@ async function findCardsAndOrder(client: YankiConnect, ankiQuery: string): Promi
     return [];
   }
 
-  if (allCardIds.length > 200) {
-    console.warn(`[MCP Anki Client] findCardsAndOrder: Query '${ankiQuery}' returned ${allCardIds.length} cards. Limiting to 200.`);
-    allCardIds = allCardIds.slice(0, 200);
+  if (allCardIds.length > 999) {
+    console.warn(`[MCP Anki Client] findCardsAndOrder: Query '${ankiQuery}' returned ${allCardIds.length} cards. Limiting to 999.`);
+    allCardIds = allCardIds.slice(0, 999);
   }
 
   console.error(`[MCP Anki Client] findCardsAndOrder: Fetching card info for ${allCardIds.length} IDs.`);

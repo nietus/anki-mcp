@@ -6,6 +6,152 @@ import {
 import { YankiConnect } from "yanki-connect";
 import { Card } from "./interfaces.js";
 import { cleanWithRegex } from "./utils.js";
+import axios from "axios";
+import * as dotenv from "dotenv";
+import * as path from "path";
+
+console.error("Current working directory:", process.cwd());
+
+const envPath = path.resolve(process.cwd(), ".env");
+console.error("Looking for .env file at:", envPath);
+
+const result = dotenv.config({ path: envPath });
+
+if (result.error) {
+  console.error("Error loading .env file:", result.error);
+} else {
+  console.error(".env file loaded successfully");
+}
+
+console.error("ANKI_MEDIA_DIR value:", process.env.ANKI_MEDIA_DIR);
+console.error("AZURE_API_KEY available:", !!process.env.AZURE_API_KEY);
+
+const languageToVoiceMap: Record<string, string> = {
+  "en": "en-US-JennyNeural",
+  "es": "es-ES-ElviraNeural",
+  "fr": "fr-FR-DeniseNeural",
+  "de": "de-DE-KatjaNeural",
+  "it": "it-IT-ElsaNeural",
+  "ja": "ja-JP-NanamiNeural",
+  "ko": "ko-KR-SunHiNeural",
+  "pt": "pt-BR-FranciscaNeural",
+  "ru": "ru-RU-SvetlanaNeural",
+  "zh": "zh-CN-XiaoxiaoNeural",
+  "ar": "ar-EG-SalmaNeural",
+  "nl": "nl-NL-ColetteNeural",
+  "hi": "hi-IN-SwaraNeural",
+  "tr": "tr-TR-EmelNeural",
+  "pl": "pl-PL-ZofiaNeural",
+  "sv": "sv-SE-SofieNeural",
+  "fi": "fi-FI-SelmaNeural",
+  "da": "da-DK-ChristelNeural",
+  "no": "nb-NO-IselinNeural",
+  "cs": "cs-CZ-VlastaNeural",
+  "hu": "hu-HU-NoemiNeural",
+  "el": "el-GR-AthinaNeural",
+  "he": "he-IL-HilaNeural",
+  "th": "th-TH-PremwadeeNeural",
+  "vi": "vi-VN-HoaiMyNeural",
+  "id": "id-ID-GadisNeural",
+  "ms": "ms-MY-YasminNeural",
+  "ro": "ro-RO-AlinaNeural",
+};
+
+import * as fs from 'fs';
+
+async function generateSpeech(text: string, language = "en") {
+  const subscriptionKey = process.env.AZURE_API_KEY;
+  if (!subscriptionKey) {
+    console.error("AZURE_API_KEY not found in environment variables. Audio generation will not work.");
+    return `[No audio available - API key missing]`;
+  }
+
+  const voice = languageToVoiceMap[language] || "en-US-JennyNeural";
+  const endpoint = "https://eastus.tts.speech.microsoft.com/cognitiveservices/v1";
+  
+  try {
+    console.log(`Generating speech for text: "${text}" in language: ${language}`);
+    console.log(`Using endpoint: ${endpoint}`);
+    console.log(`Using voice: ${voice}`);
+    
+    let response;
+    try {
+      response = await axios({
+        method: 'post',
+        url: endpoint,
+        headers: {
+          'Ocp-Apim-Subscription-Key': subscriptionKey,
+          'Content-Type': 'application/ssml+xml',
+          'X-Microsoft-OutputFormat': 'audio-16khz-128kbitrate-mono-mp3',
+          'User-Agent': 'AnkiAudioTool'
+        },
+        data: `<speak version='1.0' xml:lang='${language}'><voice xml:lang='${language}' name='${voice}'>${text}</voice></speak>`,
+        responseType: 'arraybuffer'
+      });
+    } catch (apiError) {
+      console.error("Error calling Azure TTS API:", apiError);
+      return `[Error calling TTS API: ${apiError instanceof Error ? apiError.message : 'Unknown error'}]`;
+    }
+      
+    if (!response.data || response.data.length === 0) {
+      console.error("Received empty audio data from Azure TTS API");
+      return `[Error: Empty audio data received]`;
+    }
+
+    const timestamp = new Date().getTime();
+    const fileName = `tts_${language}_${timestamp}.mp3`;
+    
+    try {
+      // Try to get media directory from env or use a fallback approach
+      let ankiMediaDir = process.env.ANKI_MEDIA_DIR;
+      
+      // Debug output
+      console.error("ANKI_MEDIA_DIR from env:", ankiMediaDir);
+      
+      // If environment variable is not set, try hardcoding the path as a fallback
+      if (!ankiMediaDir) {
+        console.error("ANKI_MEDIA_DIR not found in environment variables. Trying fallback...");
+        ankiMediaDir = "C:/Users/anton/AppData/Roaming/Anki2/Test/collection.media";
+        console.error("Using fallback media directory:", ankiMediaDir);
+      }
+      
+      if (!ankiMediaDir) {
+        console.error("ANKI_MEDIA_DIR not found in environment variables or fallback. Audio files cannot be saved.");
+        return `[Error: Anki media directory not configured]`;
+      }
+      console.log(`Using Anki media directory: ${ankiMediaDir}`);
+      
+      if (!fs.existsSync(ankiMediaDir)) {
+        console.log(`Creating Anki media directory: ${ankiMediaDir}`);
+        try {
+          fs.mkdirSync(ankiMediaDir, { recursive: true });
+        } catch (mkdirError) {
+          console.error(`Cannot create Anki media directory: ${mkdirError}`);
+          return `[Error: Cannot create Anki media directory]`;
+        }
+      }
+      
+      const filePath = path.join(ankiMediaDir, fileName);
+      console.log(`Saving audio file to: "${filePath}"`);
+      
+      fs.writeFileSync(filePath, Buffer.from(response.data));
+      
+      if (fs.existsSync(filePath)) {
+        console.log(`SUCCESS! Audio saved to: "${filePath}"`);
+        return `[sound:${fileName}]`;
+      } else {
+        console.error(`ERROR: File was not created at: "${filePath}"`);
+        return `[Error: Audio file could not be created]`;
+      }
+    } catch (fileError) {
+      console.error("Error saving audio file:", fileError);
+      return `[Error saving audio file: ${fileError instanceof Error ? fileError.message : 'Unknown error'}]`;
+    }
+  } catch (error) {
+    console.error("Unexpected error in generateSpeech:", error);
+    return `[Error generating audio: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+  }
+}
 
 function getToolDefinitions() {
   return [
@@ -36,7 +182,7 @@ function getToolDefinitions() {
     },
     {
       name: "add_card",
-      description: "Create a new flashcard in Anki for the user. Must use HTML formatting only. IMPORTANT FORMATTING RULES:\n1. Must use HTML tags for ALL formatting - NO markdown\n2. Use <br> for ALL line breaks\n3. For code blocks, use <pre> with inline CSS styling\n4. Example formatting:\n   - Line breaks: <br>\n   - Code: <pre style=\"background-color: transparent; padding: 10px; border-radius: 5px;\">\n   - Lists: <ol> and <li> tags\n   - Bold: <strong>\n   - Italic: <em>",
+      description: "Create a NEW flashcard in Anki for the user. ONLY use this for creating NEW cards, NOT for updating existing ones. Will throw an error if the card already exists. For updating existing cards, use update_note_fields with the noteId instead. Must use HTML formatting only. IMPORTANT FORMATTING RULES:\n1. Must use HTML tags for ALL formatting - NO markdown\n2. Use <br> for ALL line breaks\n3. For code blocks, use <pre> with inline CSS styling\n4. Example formatting:\n   - Line breaks: <br>\n   - Code: <pre style=\"background-color: transparent; padding: 10px; border-radius: 5px;\">\n   - Lists: <ol> and <li> tags\n   - Bold: <strong>\n   - Italic: <em>",
       inputSchema: {
         type: "object",
         properties: {
@@ -44,7 +190,7 @@ function getToolDefinitions() {
             type: "object",
             description: "An object where keys are field names and values are their content (e.g., {\"Hanzi\": \"你好\", \"Pinyin\": \"Nǐ hǎo\"}). Field names must match the target model.",
             additionalProperties: { type: "string" },
-            minProperties: 1 // Ensure at least one field is provided
+            minProperties: 1
           },
           deckName: {
             type: "string",
@@ -63,6 +209,73 @@ function getToolDefinitions() {
           }
         },
         required: ["fields", "modelName"]
+      }
+    },
+    {
+      name: "add_card_with_audio",
+      description: "Create a NEW flashcard in Anki with automatically generated audio. ONLY use this for creating NEW cards, NOT for updating existing ones. Will throw an error if the card already exists. For updating audio on existing cards, use update_card_with_audio with the noteId instead. The audio is generated from a specified source field and added to a target audio field.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          fields: {
+            type: "object",
+            description: "An object where keys are field names and values are their content.",
+            additionalProperties: { type: "string" },
+            minProperties: 1
+          },
+          deckName: {
+            type: "string",
+            description: "Optional: The name of the deck to add the card to. Defaults to the current deck or 'Default'."
+          },
+          modelName: {
+            type: "string",
+            description: "The name of the Anki note type (model) to use."
+          },
+          tags: {
+            type: "array",
+            description: "Optional: A list of tags to add to the note.",
+            items: { type: "string" }
+          },
+          sourceField: {
+            type: "string",
+            description: "Field name containing the text to generate audio from."
+          },
+          audioField: {
+            type: "string",
+            description: "Field name where the generated audio will be stored."
+          },
+          language: {
+            type: "string",
+            description: "Optional: Language code for TTS (e.g., 'en', 'es', 'fr'). Defaults to 'en'."
+          }
+        },
+        required: ["fields", "modelName", "sourceField", "audioField"]
+      }
+    },
+    {
+      name: "update_card_with_audio",
+      description: "Update an EXISTING card by generating audio from a specified field and adding it to an audio field. Use this ONLY for cards that already exist (you must have the noteId). For creating new cards with audio, use add_card_with_audio instead.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          noteId: {
+            type: "number",
+            description: "The ID of the Anki note to update."
+          },
+          sourceField: {
+            type: "string",
+            description: "Field name containing the text to generate audio from."
+          },
+          audioField: {
+            type: "string",
+            description: "Field name where the generated audio will be stored."
+          },
+          language: {
+            type: "string",
+            description: "Optional: Language code for TTS (e.g., 'en', 'es', 'fr'). Defaults to 'en'."
+          }
+        },
+        required: ["noteId", "sourceField", "audioField"]
       }
     },
     {
@@ -94,7 +307,7 @@ function getToolDefinitions() {
       },
     },
     {
-      name: "get-deck-names",
+      name: "get_deck_names",
       description: "Get a list of all Anki deck names.",
       inputSchema: {
         type: "object",
@@ -102,7 +315,7 @@ function getToolDefinitions() {
       }
     },
     {
-      name: "find-cards",
+      name: "find_cards",
       description: "Find cards using a raw Anki search query. Returns detailed card information including fields.",
       inputSchema: {
         type: "object",
@@ -116,8 +329,8 @@ function getToolDefinitions() {
       }
     },
     {
-      name: "update-note-fields",
-      description: "Update specific fields of a given Anki note.",
+      name: "update_note_fields",
+      description: "Update specific fields of an EXISTING Anki note. Use this ONLY when you already have the noteId of an existing card. For creating new cards, use add_card instead.",
       inputSchema: {
         type: "object",
         properties: {
@@ -150,7 +363,7 @@ function getToolDefinitions() {
     },
     {
       name: "bulk_update_notes",
-      description: "Update specific fields for multiple Anki notes.",
+      description: "RECOMMENDED FOR MULTIPLE CARDS: Update specific fields for multiple EXISTING Anki notes in a single operation. Much more efficient than updating cards one by one. Use this ONLY when you have noteIds for cards that already exist. For creating new cards in bulk, use add_bulk instead. Complete all updates in a single operation whenever possible.",
       inputSchema: {
         type: "object",
         properties: {
@@ -369,7 +582,7 @@ function getToolDefinitions() {
     },
     {
       name: "add_bulk",
-      description: "Adds multiple flashcards to Anki in a single operation. Must use HTML formatting for card content. This tool is for adding multiple notes (cards) at once.",
+      description: "RECOMMENDED FOR MULTIPLE CARDS: Adds multiple NEW flashcards to Anki in a single operation. Much more efficient than adding cards one by one. ONLY use this for creating NEW cards, NOT for updating existing ones. Will throw errors for any cards that already exist. For updating existing cards, use bulk_update_notes with noteIds instead. Must use HTML formatting for card content.",
       inputSchema: {
         type: "object",
         properties: {
@@ -428,6 +641,7 @@ const getDeckModelInfoToolDefinition = {
 
 export function registerToolHandlers(server: Server, getClient: () => YankiConnect) {
   server.setRequestHandler(ListToolsRequestSchema, async () => {
+    console.error("[MCP Anki Client - tool-manager.ts] Received ListToolsRequest from client.");
     const tools = [...getToolDefinitions(), getDeckModelInfoToolDefinition];
     return { tools: tools };
   });
@@ -435,14 +649,12 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
 
-    if (!args) {
-      throw new Error(`No arguments provided for tool: ${name}`);
-    }
+    const toolArgs = args || {};
 
     switch (name) {
       case "update_cards": {
         const client = getClient();
-        const answers = args.answers as { cardId: number; ease: number }[];
+        const answers = toolArgs.answers as { cardId: number; ease: number }[];
         const result = await client.card.answerCards({ answers: answers });
 
         const successfulCards = answers
@@ -465,10 +677,10 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
 
       case "add_card": {
         const client = getClient();
-        const fields = args.fields as { [key: string]: string };
-        const modelName = String(args.modelName);
-        const deckName = args.deckName ? String(args.deckName) : 'Default'; // Or fetch current deck if possible
-        const tags = args.tags as string[] || [];
+        const fields = toolArgs.fields as { [key: string]: string };
+        const modelName = String(toolArgs.modelName);
+        const deckName = toolArgs.deckName ? String(toolArgs.deckName) : 'Default';
+        const tags = toolArgs.tags as string[] || [];
 
         if (!fields || Object.keys(fields).length === 0) {
           throw new Error("The 'fields' argument cannot be empty.");
@@ -484,7 +696,7 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
             fields: fields,
             tags: tags,
             options: {
-              allowDuplicate: false // Default Anki behavior, can be made configurable
+              allowDuplicate: false
             }
           },
         };
@@ -494,14 +706,114 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
             throw new Error (`Failed to create note. AnkiConnect returned: ${result === null ? 'null (possibly duplicate or invalid model/fields)' : '0 (unknown error)'}`);
         }
         const noteId = result;
-        // Finding the card ID immediately might be complex if multiple cards are generated per note.
-        // For simplicity, returning noteId first. Or, if only one card is typical, query `nid:${noteId}`.
-        // const cardIds = await client.card.findCards({ query: `nid:${noteId}` });
 
         return {
           content: [{
             type: "text",
-            text: `Created note with id ${noteId}.` // Changed to noteId for clarity
+            text: `Created note with id ${noteId}.`
+          }]
+        };
+      }
+
+      case "add_card_with_audio": {
+        const client = getClient();
+        const fields = toolArgs.fields as { [key: string]: string };
+        const modelName = String(toolArgs.modelName);
+        const deckName = toolArgs.deckName ? String(toolArgs.deckName) : 'Default';
+        const tags = toolArgs.tags as string[] || [];
+        const sourceField = String(toolArgs.sourceField);
+        const audioField = String(toolArgs.audioField);
+        const language = toolArgs.language ? String(toolArgs.language) : 'en';
+
+        if (!fields || Object.keys(fields).length === 0) {
+          throw new Error("The 'fields' argument cannot be empty.");
+        }
+        if (!modelName) {
+          throw new Error("The 'modelName' argument is required.");
+        }
+        if (!fields[sourceField]) {
+          throw new Error(`Source field '${sourceField}' not found in the provided fields or is empty.`);
+        }
+        
+        if (!languageToVoiceMap[language]) {
+          throw new Error(`Unsupported language code: '${language}'. Supported languages are: ${Object.keys(languageToVoiceMap).join(', ')}`);
+        }
+
+        const audioContent = await generateSpeech(fields[sourceField], language);
+        
+        const fieldsWithAudio = { ...fields, [audioField]: audioContent };
+
+        const notePayload = {
+          note: {
+            deckName: deckName,
+            modelName: modelName,
+            fields: fieldsWithAudio,
+            tags: tags,
+            options: {
+              allowDuplicate: false
+            }
+          },
+        };
+
+        const result = await client.note.addNote(notePayload);
+        if (result === null || result === 0) {
+          throw new Error(`Failed to create note with audio. AnkiConnect returned: ${result === null ? 'null (possibly duplicate or invalid model/fields)' : '0 (unknown error)'}`);
+        }
+        const noteId = result;
+
+        return {
+          content: [{
+            type: "text",
+            text: `Created note with id ${noteId} including generated audio in ${language} language.`
+          }]
+        };
+      }
+
+      case "update_card_with_audio": {
+        const client = getClient();
+        const noteId = Number(toolArgs.noteId);
+        const sourceField = String(toolArgs.sourceField);
+        const audioField = String(toolArgs.audioField);
+        const language = toolArgs.language ? String(toolArgs.language) : 'en';
+
+        if (isNaN(noteId)) {
+          throw new Error("Invalid noteId provided.");
+        }
+        
+        if (!languageToVoiceMap[language]) {
+          throw new Error(`Unsupported language code: '${language}'. Supported languages are: ${Object.keys(languageToVoiceMap).join(', ')}`);
+        }
+
+        const noteInfo = await client.note.notesInfo({ notes: [noteId] });
+        if (!noteInfo || noteInfo.length === 0) {
+          throw new Error(`Note with ID ${noteId} not found.`);
+        }
+
+        const note = noteInfo[0];
+        if (!note.fields[sourceField]) {
+          throw new Error(`Source field '${sourceField}' not found in note ${noteId}.`);
+        }
+
+        const sourceText = note.fields[sourceField].value;
+        if (!sourceText) {
+          throw new Error(`Source field '${sourceField}' is empty in note ${noteId}.`);
+        }
+
+        const audioContent = await generateSpeech(sourceText, language);
+        
+        await client.note.updateNoteFields({
+          note: {
+            id: noteId,
+            fields: {
+              [audioField]: audioContent
+            },
+          },
+        });
+
+        return {
+          content: [{
+            type: "text",
+            text: `Successfully updated note ${noteId} with generated audio in ${language} language from the '${sourceField}' field.`
           }]
         };
       }
@@ -510,7 +822,7 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
         const client = getClient();
         const ankiQuery = "is:due";
         let allCardIds = await client.card.findCards({ query: ankiQuery });
-        if (allCardIds.length > 200) allCardIds = allCardIds.slice(0, 200);
+        if (allCardIds.length > 999) allCardIds = allCardIds.slice(0, 999);
         const cardsData = await client.card.cardsInfo({ cards: allCardIds });
         const mappedCards: Card[] = cardsData.map((card: any) => ({
           cardId: card.cardId,
@@ -528,7 +840,7 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
         const client = getClient();
         const ankiQuery = "is:new";
         let allCardIds = await client.card.findCards({ query: ankiQuery });
-        if (allCardIds.length > 200) allCardIds = allCardIds.slice(0, 200);
+        if (allCardIds.length > 999) allCardIds = allCardIds.slice(0, 999);
         const cardsData = await client.card.cardsInfo({ cards: allCardIds });
         const mappedCards: Card[] = cardsData.map((card: any) => ({
           cardId: card.cardId,
@@ -542,7 +854,7 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
         };
       }
 
-      case "get-deck-names": {
+      case "get_deck_names": {
         const client = getClient();
         const deckNames = await client.deck.deckNames();
         return {
@@ -550,9 +862,9 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
         };
       }
 
-      case "find-cards": {
+      case "find_cards": {
         const client = getClient();
-        const query = String(args.query);
+        const query = String(toolArgs.query);
         if (!query) {
           console.error("[MCP Anki Client] find-cards: Query parameter is required.");
           throw new Error("Query parameter is required for find-cards tool.");
@@ -563,9 +875,9 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
         if (allCardIds.length === 0) {
           return { content: [{ type: "text", text: JSON.stringify([]) }] };
         }
-        if (allCardIds.length > 200) {
-          console.warn(`[MCP Anki Client] find-cards: Query "${query}" returned ${allCardIds.length} cards. Limiting to 200.`);
-          allCardIds = allCardIds.slice(0, 200);
+        if (allCardIds.length > 999) {
+          console.warn(`[MCP Anki Client] find-cards: Query "${query}" returned ${allCardIds.length} cards. Limiting to 999.`);
+          allCardIds = allCardIds.slice(0, 999);
         }
         const cardsInfoRaw = await client.card.cardsInfo({ cards: allCardIds });
         console.error(`[MCP Anki Client] find-cards: Fetched info for ${cardsInfoRaw.length} cards.`);
@@ -591,10 +903,10 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
         };
       }
 
-      case "update-note-fields": {
+      case "update_note_fields": {
         const client = getClient();
-        const noteId = Number(args.noteId);
-        const fieldsToUpdate = args.fields as Record<string, string>;
+        const noteId = Number(toolArgs.noteId);
+        const fieldsToUpdate = toolArgs.fields as Record<string, string>;
         if (isNaN(noteId)) {
           throw new Error("Invalid noteId provided.");
         }
@@ -614,7 +926,7 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
 
       case "create_deck": {
         const client = getClient();
-        const deckName = String(args.deckName);
+        const deckName = String(toolArgs.deckName);
         if (!deckName) {
           throw new Error("deckName parameter is required for create_deck tool.");
         }
@@ -626,7 +938,7 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
 
       case "bulk_update_notes": {
         const client = getClient();
-        const notesToUpdate = args.notes as { noteId: number; fields: Record<string, string> }[];
+        const notesToUpdate = toolArgs.notes as { noteId: number; fields: Record<string, string> }[];
         if (!notesToUpdate || !Array.isArray(notesToUpdate) || notesToUpdate.length === 0) {
           throw new Error("Invalid or empty 'notes' array provided for bulk_update_notes tool.");
         }
@@ -665,7 +977,7 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
 
       case "get_model_details": {
         const client = getClient();
-        const modelName = String(args.modelName);
+        const modelName = String(toolArgs.modelName);
         if (!modelName) throw new Error("modelName parameter is required.");
         const fieldNames = await client.model.modelFieldNames({ modelName });
         const templates = await client.model.modelTemplates({ modelName });
@@ -675,8 +987,8 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
 
       case "add_note_type_field": {
         const client = getClient();
-        const modelName = String(args.modelName);
-        const fieldName = String(args.fieldName);
+        const modelName = String(toolArgs.modelName);
+        const fieldName = String(toolArgs.fieldName);
         if (!modelName || !fieldName) throw new Error("modelName and fieldName parameters are required.");
         const currentFields = await client.model.modelFieldNames({ modelName });
         if (currentFields.includes(fieldName)) {
@@ -688,8 +1000,8 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
 
       case "remove_note_type_field": {
         const client = getClient();
-        const modelName = String(args.modelName);
-        const fieldName = String(args.fieldName);
+        const modelName = String(toolArgs.modelName);
+        const fieldName = String(toolArgs.fieldName);
         if (!modelName || !fieldName) throw new Error("modelName and fieldName parameters are required.");
         const currentFields = await client.model.modelFieldNames({ modelName });
         if (!currentFields.includes(fieldName)) {
@@ -701,9 +1013,9 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
 
       case "rename_note_type_field": {
         const client = getClient();
-        const modelName = String(args.modelName);
-        const oldFieldName = String(args.oldFieldName);
-        const newFieldName = String(args.newFieldName);
+        const modelName = String(toolArgs.modelName);
+        const oldFieldName = String(toolArgs.oldFieldName);
+        const newFieldName = String(toolArgs.newFieldName);
         if (!modelName || !oldFieldName || !newFieldName) {
           throw new Error("modelName, oldFieldName, and newFieldName parameters are required.");
         }
@@ -720,9 +1032,9 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
 
       case "reposition_note_type_field": {
         const client = getClient();
-        const modelName = String(args.modelName);
-        const fieldName = String(args.fieldName);
-        const newIndex = Number(args.index);
+        const modelName = String(toolArgs.modelName);
+        const fieldName = String(toolArgs.fieldName);
+        const newIndex = Number(toolArgs.index);
         if (!modelName || !fieldName || isNaN(newIndex)) {
           throw new Error("modelName, fieldName, and a valid index parameters are required.");
         }
@@ -739,8 +1051,8 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
 
       case "update_note_type_templates": {
         const client = getClient();
-        const modelName = String(args.modelName);
-        const templates = args.templates as Record<string, { Front: string; Back: string }>;
+        const modelName = String(toolArgs.modelName);
+        const templates = toolArgs.templates as Record<string, { Front: string; Back: string }>;
         if (!modelName || !templates) throw new Error("modelName and templates parameters are required.");
         await client.model.updateModelTemplates({ model: { name: modelName, templates: templates } });
         return { content: [{ type: "text", text: `Successfully updated templates for model '${modelName}'.` }] };
@@ -748,8 +1060,8 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
 
       case "update_note_type_styling": {
         const client = getClient();
-        const modelName = String(args.modelName);
-        const css = String(args.css);
+        const modelName = String(toolArgs.modelName);
+        const css = String(toolArgs.css);
         if (!modelName || css === undefined) throw new Error("modelName and css parameters are required.");
         await client.model.updateModelStyling({ model: { name: modelName, css: css } });
         return { content: [{ type: "text", text: `Successfully updated styling for model '${modelName}'.` }] };
@@ -757,11 +1069,11 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
       
       case "create_model": {
         const client = getClient();
-        const modelName = String(args.modelName);
-        const fieldNames = args.fieldNames as string[];
-        const cardTemplates = args.cardTemplates as { Name: string; Front: string; Back: string }[];
-        const css = args.css ? String(args.css) : "";
-        const isCloze = typeof args.isCloze === 'boolean' ? args.isCloze : false;
+        const modelName = String(toolArgs.modelName);
+        const fieldNames = toolArgs.fieldNames as string[];
+        const cardTemplates = toolArgs.cardTemplates as { Name: string; Front: string; Back: string }[];
+        const css = toolArgs.css ? String(toolArgs.css) : "";
+        const isCloze = typeof toolArgs.isCloze === 'boolean' ? toolArgs.isCloze : false;
         if (!modelName || !fieldNames || fieldNames.length === 0 || !cardTemplates || cardTemplates.length === 0) {
           throw new Error("modelName, fieldNames (non-empty), and cardTemplates (non-empty) are required.");
         }
@@ -781,7 +1093,7 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
 
       case "add_bulk": {
         const client = getClient();
-        const notesInput = args.notes as {
+        const notesInput = toolArgs.notes as {
           fields: { [key: string]: string };
           modelName: string;
           deckName?: string;
@@ -848,7 +1160,7 @@ export function registerToolHandlers(server: Server, getClient: () => YankiConne
 
       case "get_deck_model_info": {
         const client = getClient();
-        const deckName = String(args.deckName);
+        const deckName = String(toolArgs.deckName);
         if (!deckName) {
           throw new Error("deckName parameter is required for get_deck_model_info tool.");
         }

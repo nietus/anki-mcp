@@ -1,16 +1,20 @@
 # anki-mcp
+
 [![smithery badge](https://smithery.ai/badge/@nietus/anki-mcp)](https://smithery.ai/server/@nietus/anki-mcp)
 
 MCP server for Anki. This server allows interaction with Anki through the Model Context Protocol (MCP). It enables users to manage flashcards, decks, and review processes programmatically.
+
+<video src="public/0521.mp4" controls width="100%"></video>
 
 ## Prerequisites
 
 - Node.js and npm installed.
 - AnkiConnect plugin installed and running in Anki.
+- For audio features: Azure API key (set in `.env` file as `AZURE_API_KEY`).
 
 ## Setup and Execution
 
-Highly recommended to run locally, since anki connect only works locally
+Highly recommended to run locally, since AnkiConnect only works locally
 
 ### To run locally:
 
@@ -20,31 +24,60 @@ Highly recommended to run locally, since anki connect only works locally
    git clone https://github.com/nietus/anki-mcp
    ```
 
-
 2. **Install dependencies:**
 
    ```bash
    npm install
    ```
 
-3. **Build the project:**
-   The `prepare` script in `package.json` should automatically run the build upon installation. If you need to build manually:
+3. **Build the project**
 
    ```bash
    npm run build
    ```
 
-   This command compiles the TypeScript code and makes the client script executable.
+4. **Setup for Audio Features (If you want to use audio tools):**
 
-4. **Integrate with Cursor settings for Windows**
+   Create a .env file in the root directory with your Azure API key and Anki media directory:
 
    ```
+   AZURE_API_KEY=your_azure_api_key_here
+   ANKI_MEDIA_DIR=path/to/your/anki/media/directory
+   ```
+   
+   For Anki media directory, use the path to your Anki collection.media folder. This is where audio files will be stored. If you have trouble, paste it directly into the code.
+   
+   - Windows example: `C:\Users\username\AppData\Roaming\Anki2\User 1\collection.media`
+   - macOS example: `/Users/username/Library/Application Support/Anki2/User 1/collection.media`
+   - Linux example: `/home/username/.local/share/Anki2/User 1/collection.media`
+   
+   **Note:** The ANKI_MEDIA_DIR is required for audio generation to work properly as Anki needs to find the audio files in its media collection.
+
+5. **Integrate with Cursor settings (for local execution):**
+
+   To run your local build of anki-mcp with Cursor, you need to tell Cursor how to start the server. Below are example configurations which you can access on cursor settings. Replace YOUR_USERNAME and adjust the path if you cloned anki-mcp to a different location than Downloads.
+
+   **Windows:**
+
+   ```json
    "anki": {
          "command": "cmd",
          "args": [
            "/c",
            "node",
-           "c:/Users/-/Downloads/anki-mcp/build/client.js"
+           "c:/Users/YOUR_USERNAME/Downloads/anki-mcp/build/client.js"
+         ]
+       }
+   ```
+
+   **macOS / Linux:**
+
+   ```json
+   "anki": {
+         "command": "bash",
+         "args": [
+           "-c",
+           "node /Users/YOUR_USERNAME/Downloads/anki-mcp/build/client.js"
          ]
        }
    ```
@@ -66,7 +99,7 @@ The server provides the following tools for interacting with Anki:
 
 - `add_card`:
 
-  - Description: Create a new flashcard in Anki. Note content uses HTML.
+  - Description: Create a NEW flashcard in Anki. Use ONLY for creating new cards, NOT for updating existing ones (will throw an error if the card already exists). For updating existing cards, use `update_note_fields` with the noteId instead. Note content uses HTML.
     - Line breaks: `<br>`
     - Code: `<pre style="background-color: transparent; padding: 10px; border-radius: 5px;">`
     - Lists: `<ol>` and `<li>`
@@ -78,6 +111,25 @@ The server provides the following tools for interacting with Anki:
     - `deckName`: (optional string) The name of the deck to add the card to. Defaults to the current deck or 'Default'.
     - `tags`: (optional array of strings) A list of tags to add to the note.
 
+- `add_card_with_audio`:
+
+  - Description: Create a NEW flashcard in Anki with automatically generated audio from Azure TTS. Use ONLY for creating new cards, NOT for updating existing ones (will throw an error if the card already exists). For updating audio on existing cards, use `update_card_with_audio` with the noteId instead.
+  - Input:
+    - `fields`, `modelName`, `deckName`, `tags`: Same as `add_card`.
+    - `sourceField`: (string) Field name containing the text to generate audio from.
+    - `audioField`: (string) Field name where the generated audio will be stored.
+    - `language`: (optional string) Language code for TTS (e.g., 'en', 'es', 'fr'). Defaults to 'en'.
+  - Supported languages: en, es, fr, de, it, ja, ko, pt, ru, zh, ar, nl, hi, tr, pl, sv, fi, da, no, cs, hu, el, he, th, vi, id, ms, ro.
+
+- `update_card_with_audio`:
+
+  - Description: Update an EXISTING card by generating audio from a specified field and adding it to an audio field. Use ONLY for cards that already exist (you must have the noteId). For creating new cards with audio, use `add_card_with_audio` instead.
+  - Input:
+    - `noteId`: (number) The ID of the Anki note to update.
+    - `sourceField`: (string) Field name containing the text to generate audio from.
+    - `audioField`: (string) Field name where the generated audio will be stored.
+    - `language`: (optional string) Language code for TTS. Defaults to 'en'.
+
 - `get_due_cards`:
 
   - Description: Returns a given number of cards due for review.
@@ -88,19 +140,19 @@ The server provides the following tools for interacting with Anki:
   - Description: Returns a given number of new and unseen cards.
   - Input: `num` (number).
 
-- `get-deck-names`:
+- `get_deck_names`:
 
   - Description: Get a list of all Anki deck names.
   - Input: None.
 
-- `find-cards`:
+- `find_cards`:
 
   - Description: Find cards using a raw Anki search query. Returns detailed card information including fields.
   - Input: `query` (string, e.g., `'deck:Default -tag:test'`, or `'"deck:My Deck" tag:important'`). To filter for empty fields, use `'-FieldName:_*'` (e.g., `'-Hanzi:_*'`).
 
-- `update-note-fields`:
+- `update_note_fields`:
 
-  - Description: Update specific fields of a given Anki note.
+  - Description: Update specific fields of an EXISTING Anki note. Use ONLY when you already have the noteId of an existing card. For creating new cards, use `add_card` instead.
   - Input: `noteId` (number), `fields` (object, e.g., `{"Front": "New Q", "Back": "New A"}`).
 
 - `create_deck`:
@@ -110,7 +162,7 @@ The server provides the following tools for interacting with Anki:
 
 - `bulk_update_notes`:
 
-  - Description: Update specific fields for multiple Anki notes.
+  - Description: **RECOMMENDED FOR MULTIPLE CARDS**: Update specific fields for multiple EXISTING Anki notes in a single operation. Much more efficient than updating cards one by one. Use ONLY when you have noteIds for cards that already exist. For creating new cards in bulk, use `add_bulk` instead. Always complete all updates in a single operation whenever possible.
   - Input: An array of `notes`, where each note has `noteId` (number) and `fields` (object).
 
 - `get_model_names`:
@@ -166,7 +218,7 @@ The server provides the following tools for interacting with Anki:
 
 - `add_bulk`:
 
-  - Description: Adds multiple flashcards to Anki in a single operation. Note content uses HTML. This tool is for adding multiple notes (cards) at once.
+  - Description: **RECOMMENDED FOR MULTIPLE CARDS**: Adds multiple NEW flashcards to Anki in a single operation. Much more efficient than adding cards one by one. Use ONLY for creating new cards, NOT for updating existing ones (will throw errors for any cards that already exist). For updating existing cards, use `bulk_update_notes` with noteIds instead. Always complete all additions in a single operation whenever possible. Must use HTML formatting for card content.
   - Input: An array of `notes`, where each note object has:
     - `fields`: (object) An object where keys are field names and values are their HTML content.
     - `modelName`: (string) The name of the Anki note type (model) to use for this note.
