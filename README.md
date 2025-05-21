@@ -4,7 +4,7 @@
 
 MCP server for Anki. This server allows interaction with Anki through the Model Context Protocol (MCP). It enables users to manage flashcards, decks, and review processes programmatically.
 
-<video src="public/0521.mp4" controls width="100%"></video>
+[![Watch the video](public/0521.png)](https://www.youtube.com/watch?v=NZomvkf8bio)
 
 ## Prerequisites
 
