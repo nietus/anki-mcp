@@ -10,11 +10,13 @@ MCP server for Anki. This server allows interaction with Anki through the Model 
 
 - Node.js and npm installed.
 - AnkiConnect plugin installed and running in Anki.
-- For audio features: Azure API key (set in `.env` file as `AZURE_API_KEY`).
+- For audio features: Azure API key (set in `.env` file as `AZURE_API_KEY`) and Anki Media Directory (set as `ANKI_MEDIA_DIR`).
 
 ## Setup and Execution
 
-Highly recommended to run locally, since AnkiConnect only works locally
+Highly recommended to run locally, since AnkiConnect only works locally.
+
+Was only tested on windows.
 
 ### To run locally:
 
