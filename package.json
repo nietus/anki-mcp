@@ -14,7 +14,7 @@
     "build": "tsc && node -e \"require('fs').chmodSync('build/client.js', '755')\"",
     "prepare": "npm run build",
     "watch": "tsc --watch",
-    "inspector": "npx @modelcontextprotocol/inspector build/client.js"
+    "inspector": "npx @modelcontextprotocol/inspector node build/client.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "0.6.0",
