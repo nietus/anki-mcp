@@ -16,43 +16,45 @@ else {
 console.error("ANKI_MEDIA_DIR value:", process.env.ANKI_MEDIA_DIR);
 console.error("AZURE_API_KEY available:", !!process.env.AZURE_API_KEY);
 const languageToVoiceMap = {
-    "en": "en-US-JennyNeural",
-    "es": "es-ES-ElviraNeural",
-    "fr": "fr-FR-DeniseNeural",
-    "de": "de-DE-KatjaNeural",
-    "it": "it-IT-ElsaNeural",
-    "ja": "ja-JP-NanamiNeural",
-    "ko": "ko-KR-SunHiNeural",
-    "pt": "pt-BR-FranciscaNeural",
-    "ru": "ru-RU-SvetlanaNeural",
-    "zh": "zh-CN-XiaoxiaoNeural",
-    "ar": "ar-EG-SalmaNeural",
-    "nl": "nl-NL-ColetteNeural",
-    "hi": "hi-IN-SwaraNeural",
-    "tr": "tr-TR-EmelNeural",
-    "pl": "pl-PL-ZofiaNeural",
-    "sv": "sv-SE-SofieNeural",
-    "fi": "fi-FI-SelmaNeural",
-    "da": "da-DK-ChristelNeural",
-    "no": "nb-NO-IselinNeural",
-    "cs": "cs-CZ-VlastaNeural",
-    "hu": "hu-HU-NoemiNeural",
-    "el": "el-GR-AthinaNeural",
-    "he": "he-IL-HilaNeural",
-    "th": "th-TH-PremwadeeNeural",
-    "vi": "vi-VN-HoaiMyNeural",
-    "id": "id-ID-GadisNeural",
-    "ms": "ms-MY-YasminNeural",
-    "ro": "ro-RO-AlinaNeural",
+    en: "en-US-JennyNeural",
+    es: "es-ES-ElviraNeural",
+    fr: "fr-FR-DeniseNeural",
+    de: "de-DE-KatjaNeural",
+    it: "it-IT-ElsaNeural",
+    ja: "ja-JP-NanamiNeural",
+    ko: "ko-KR-SunHiNeural",
+    pt: "pt-BR-FranciscaNeural",
+    "pt-PT": "pt-PT-RaquelNeural",
+    ru: "ru-RU-SvetlanaNeural",
+    zh: "zh-CN-XiaoxiaoNeural",
+    ar: "ar-EG-SalmaNeural",
+    nl: "nl-NL-ColetteNeural",
+    hi: "hi-IN-SwaraNeural",
+    tr: "tr-TR-EmelNeural",
+    pl: "pl-PL-ZofiaNeural",
+    sv: "sv-SE-SofieNeural",
+    fi: "fi-FI-SelmaNeural",
+    da: "da-DK-ChristelNeural",
+    no: "nb-NO-IselinNeural",
+    cs: "cs-CZ-VlastaNeural",
+    hu: "hu-HU-NoemiNeural",
+    el: "el-GR-AthinaNeural",
+    he: "he-IL-HilaNeural",
+    th: "th-TH-PremwadeeNeural",
+    vi: "vi-VN-HoaiMyNeural",
+    id: "id-ID-GadisNeural",
+    ms: "ms-MY-YasminNeural",
+    ro: "ro-RO-AlinaNeural",
 };
-import * as fs from 'fs';
+import * as fs from "fs";
 async function generateSpeech(text, language = "en") {
     const subscriptionKey = process.env.AZURE_API_KEY;
     if (!subscriptionKey) {
         console.error("AZURE_API_KEY not found in environment variables. Audio generation will not work.");
         return `[No audio available - API key missing]`;
     }
-    const voice = languageToVoiceMap[language] || "en-US-JennyNeural";
+    // If no mapping is found, just use the language code as the voice name (let Azure handle it - to test azure voices without rebuild)
+    const voice = languageToVoiceMap[language] || language || "en-US-JennyNeural";
     const endpoint = "https://eastus.tts.speech.microsoft.com/cognitiveservices/v1";
     try {
         console.log(`Generating speech for text: "${text}" in language: ${language}`);
@@ -61,21 +63,21 @@ async function generateSpeech(text, language = "en") {
         let response;
         try {
             response = await axios({
-                method: 'post',
+                method: "post",
                 url: endpoint,
                 headers: {
-                    'Ocp-Apim-Subscription-Key': subscriptionKey,
-                    'Content-Type': 'application/ssml+xml',
-                    'X-Microsoft-OutputFormat': 'audio-16khz-128kbitrate-mono-mp3',
-                    'User-Agent': 'AnkiAudioTool'
+                    "Ocp-Apim-Subscription-Key": subscriptionKey,
+                    "Content-Type": "application/ssml+xml",
+                    "X-Microsoft-OutputFormat": "audio-16khz-128kbitrate-mono-mp3",
+                    "User-Agent": "AnkiAudioTool",
                 },
                 data: `<speak version='1.0' xml:lang='${language}'><voice xml:lang='${language}' name='${voice}'>${text}</voice></speak>`,
-                responseType: 'arraybuffer'
+                responseType: "arraybuffer",
             });
         }
         catch (apiError) {
             console.error("Error calling Azure TTS API:", apiError);
-            return `[Error calling TTS API: ${apiError instanceof Error ? apiError.message : 'Unknown error'}]`;
+            return `[Error calling TTS API: ${apiError instanceof Error ? apiError.message : "Unknown error"}]`;
         }
         if (!response.data || response.data.length === 0) {
             console.error("Received empty audio data from Azure TTS API");
@@ -91,7 +93,8 @@ async function generateSpeech(text, language = "en") {
             // If environment variable is not set, try hardcoding the path as a fallback
             if (!ankiMediaDir) {
                 console.error("ANKI_MEDIA_DIR not found in environment variables. Trying fallback...");
-                ankiMediaDir = "C:/Users/anton/AppData/Roaming/Anki2/Test/collection.media";
+                ankiMediaDir =
+                    "C:/Users/anton/AppData/Roaming/Anki2/Test/collection.media";
                 console.error("Using fallback media directory:", ankiMediaDir);
             }
             if (!ankiMediaDir) {
@@ -123,12 +126,12 @@ async function generateSpeech(text, language = "en") {
         }
         catch (fileError) {
             console.error("Error saving audio file:", fileError);
-            return `[Error saving audio file: ${fileError instanceof Error ? fileError.message : 'Unknown error'}]`;
+            return `[Error saving audio file: ${fileError instanceof Error ? fileError.message : "Unknown error"}]`;
         }
     }
     catch (error) {
         console.error("Unexpected error in generateSpeech:", error);
-        return `[Error generating audio: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+        return `[Error generating audio: ${error instanceof Error ? error.message : "Unknown error"}]`;
     }
 }
 function getToolDefinitions() {
@@ -146,48 +149,48 @@ function getToolDefinitions() {
                             properties: {
                                 cardId: {
                                     type: "number",
-                                    description: "Id of the card to answer"
+                                    description: "Id of the card to answer",
                                 },
                                 ease: {
                                     type: "number",
-                                    description: "Ease of the card between 1 (Again) and 4 (Easy)"
-                                }
-                            }
-                        }
-                    }
+                                    description: "Ease of the card between 1 (Again) and 4 (Easy)",
+                                },
+                            },
+                        },
+                    },
                 },
-            }
+            },
         },
         {
             name: "add_card",
-            description: "Create a NEW flashcard in Anki for the user. ONLY use this for creating NEW cards, NOT for updating existing ones. Will throw an error if the card already exists. For updating existing cards, use update_note_fields with the noteId instead. Must use HTML formatting only. IMPORTANT FORMATTING RULES:\n1. Must use HTML tags for ALL formatting - NO markdown\n2. Use <br> for ALL line breaks\n3. For code blocks, use <pre> with inline CSS styling\n4. Example formatting:\n   - Line breaks: <br>\n   - Code: <pre style=\"background-color: transparent; padding: 10px; border-radius: 5px;\">\n   - Lists: <ol> and <li> tags\n   - Bold: <strong>\n   - Italic: <em>",
+            description: 'Create a NEW flashcard in Anki for the user. ONLY use this for creating NEW cards, NOT for updating existing ones. Will throw an error if the card already exists. For updating existing cards, use update_note_fields with the noteId instead. Must use HTML formatting only. IMPORTANT FORMATTING RULES:\n1. Must use HTML tags for ALL formatting - NO markdown\n2. Use <br> for ALL line breaks\n3. For code blocks, use <pre> with inline CSS styling\n4. Example formatting:\n   - Line breaks: <br>\n   - Code: <pre style="background-color: transparent; padding: 10px; border-radius: 5px;">\n   - Lists: <ol> and <li> tags\n   - Bold: <strong>\n   - Italic: <em>',
             inputSchema: {
                 type: "object",
                 properties: {
                     fields: {
                         type: "object",
-                        description: "An object where keys are field names and values are their content (e.g., {\"Hanzi\": \"你好\", \"Pinyin\": \"Nǐ hǎo\"}). Field names must match the target model.",
+                        description: 'An object where keys are field names and values are their content (e.g., {"Hanzi": "你好", "Pinyin": "Nǐ hǎo"}). Field names must match the target model.',
                         additionalProperties: { type: "string" },
-                        minProperties: 1
+                        minProperties: 1,
                     },
                     deckName: {
                         type: "string",
-                        description: "Optional: The name of the deck to add the card to. Defaults to the current deck or 'Default'."
+                        description: "Optional: The name of the deck to add the card to. Defaults to the current deck or 'Default'.",
                     },
                     modelName: {
                         type: "string",
-                        description: "The name of the Anki note type (model) to use."
+                        description: "The name of the Anki note type (model) to use.",
                     },
                     tags: {
                         type: "array",
                         description: "Optional: A list of tags to add to the note.",
                         items: {
-                            type: "string"
-                        }
-                    }
+                            type: "string",
+                        },
+                    },
                 },
-                required: ["fields", "modelName"]
-            }
+                required: ["fields", "modelName"],
+            },
         },
         {
             name: "add_card_with_audio",
@@ -199,36 +202,36 @@ function getToolDefinitions() {
                         type: "object",
                         description: "An object where keys are field names and values are their content.",
                         additionalProperties: { type: "string" },
-                        minProperties: 1
+                        minProperties: 1,
                     },
                     deckName: {
                         type: "string",
-                        description: "Optional: The name of the deck to add the card to. Defaults to the current deck or 'Default'."
+                        description: "Optional: The name of the deck to add the card to. Defaults to the current deck or 'Default'.",
                     },
                     modelName: {
                         type: "string",
-                        description: "The name of the Anki note type (model) to use."
+                        description: "The name of the Anki note type (model) to use.",
                     },
                     tags: {
                         type: "array",
                         description: "Optional: A list of tags to add to the note.",
-                        items: { type: "string" }
+                        items: { type: "string" },
                     },
                     sourceField: {
                         type: "string",
-                        description: "Field name containing the text to generate audio from."
+                        description: "Field name containing the text to generate audio from.",
                     },
                     audioField: {
                         type: "string",
-                        description: "Field name where the generated audio will be stored."
+                        description: "Field name where the generated audio will be stored.",
                     },
                     language: {
                         type: "string",
-                        description: "Optional: Language code for TTS (e.g., 'en', 'es', 'fr'). Defaults to 'en'."
-                    }
+                        description: "Optional: Language code for TTS (e.g., 'en', 'es', 'fr'). Defaults to 'en'.",
+                    },
                 },
-                required: ["fields", "modelName", "sourceField", "audioField"]
-            }
+                required: ["fields", "modelName", "sourceField", "audioField"],
+            },
         },
         {
             name: "update_card_with_audio",
@@ -238,23 +241,23 @@ function getToolDefinitions() {
                 properties: {
                     noteId: {
                         type: "number",
-                        description: "The ID of the Anki note to update."
+                        description: "The ID of the Anki note to update.",
                     },
                     sourceField: {
                         type: "string",
-                        description: "Field name containing the text to generate audio from."
+                        description: "Field name containing the text to generate audio from.",
                     },
                     audioField: {
                         type: "string",
-                        description: "Field name where the generated audio will be stored."
+                        description: "Field name where the generated audio will be stored.",
                     },
                     language: {
                         type: "string",
-                        description: "Optional: Language code for TTS (e.g., 'en', 'es', 'fr'). Defaults to 'en'."
-                    }
+                        description: "Optional: Language code for TTS (e.g., 'en', 'es', 'fr'). Defaults to 'en'.",
+                    },
                 },
-                required: ["noteId", "sourceField", "audioField"]
-            }
+                required: ["noteId", "sourceField", "audioField"],
+            },
         },
         {
             name: "get_due_cards",
@@ -264,10 +267,10 @@ function getToolDefinitions() {
                 properties: {
                     num: {
                         type: "number",
-                        description: "Number of due cards to get"
-                    }
+                        description: "Number of due cards to get",
+                    },
                 },
-                required: ["num"]
+                required: ["num"],
             },
         },
         {
@@ -278,10 +281,10 @@ function getToolDefinitions() {
                 properties: {
                     num: {
                         type: "number",
-                        description: "Number of new cards to get"
-                    }
+                        description: "Number of new cards to get",
+                    },
                 },
-                required: ["num"]
+                required: ["num"],
             },
         },
         {
@@ -290,7 +293,7 @@ function getToolDefinitions() {
             inputSchema: {
                 type: "object",
                 properties: {},
-            }
+            },
         },
         {
             name: "find_cards",
@@ -300,11 +303,11 @@ function getToolDefinitions() {
                 properties: {
                     query: {
                         type: "string",
-                        description: "Anki search query string (e.g., 'deck:Default -tag:test'). If a deck name or field contains spaces, it should be enclosed in double quotes (e.g., '\"deck:My Deck\" tag:important'). To filter for empty fields, use '-FieldName:_*' (e.g., '-Hanzi:_*')."
-                    }
+                        description: "Anki search query string (e.g., 'deck:Default -tag:test'). If a deck name or field contains spaces, it should be enclosed in double quotes (e.g., '\"deck:My Deck\" tag:important'). To filter for empty fields, use '-FieldName:_*' (e.g., '-Hanzi:_*').",
+                    },
                 },
-                required: ["query"]
-            }
+                required: ["query"],
+            },
         },
         {
             name: "update_note_fields",
@@ -314,16 +317,16 @@ function getToolDefinitions() {
                 properties: {
                     noteId: {
                         type: "number",
-                        description: "The ID of the Anki note to update."
+                        description: "The ID of the Anki note to update.",
                     },
                     fields: {
                         type: "object",
-                        description: "An object where keys are field names and values are the new field content (e.g., {\"Front\": \"New Q\", \"Back\": \"New A\"})",
-                        additionalProperties: { type: "string" }
-                    }
+                        description: 'An object where keys are field names and values are the new field content (e.g., {"Front": "New Q", "Back": "New A"})',
+                        additionalProperties: { type: "string" },
+                    },
                 },
-                required: ["noteId", "fields"]
-            }
+                required: ["noteId", "fields"],
+            },
         },
         {
             name: "create_deck",
@@ -333,11 +336,11 @@ function getToolDefinitions() {
                 properties: {
                     deckName: {
                         type: "string",
-                        description: "The name of the deck to create."
-                    }
+                        description: "The name of the deck to create.",
+                    },
                 },
-                required: ["deckName"]
-            }
+                required: ["deckName"],
+            },
         },
         {
             name: "bulk_update_notes",
@@ -353,28 +356,28 @@ function getToolDefinitions() {
                             properties: {
                                 noteId: {
                                     type: "number",
-                                    description: "The ID of the Anki note to update."
+                                    description: "The ID of the Anki note to update.",
                                 },
                                 fields: {
                                     type: "object",
                                     description: "An object where keys are field names and values are the new field content.",
-                                    additionalProperties: { type: "string" }
-                                }
+                                    additionalProperties: { type: "string" },
+                                },
                             },
-                            required: ["noteId", "fields"]
-                        }
-                    }
+                            required: ["noteId", "fields"],
+                        },
+                    },
                 },
-                required: ["notes"]
-            }
+                required: ["notes"],
+            },
         },
         {
             name: "get_model_names",
             description: "Lists all available Anki note type/model names.",
             inputSchema: {
                 type: "object",
-                properties: {}
-            }
+                properties: {},
+            },
         },
         {
             name: "get_model_details",
@@ -384,11 +387,11 @@ function getToolDefinitions() {
                 properties: {
                     modelName: {
                         type: "string",
-                        description: "The name of the note type."
-                    }
+                        description: "The name of the note type.",
+                    },
                 },
-                required: ["modelName"]
-            }
+                required: ["modelName"],
+            },
         },
         {
             name: "add_note_type_field",
@@ -398,15 +401,15 @@ function getToolDefinitions() {
                 properties: {
                     modelName: {
                         type: "string",
-                        description: "The name of the note type."
+                        description: "The name of the note type.",
                     },
                     fieldName: {
                         type: "string",
-                        description: "The name of the new field."
-                    }
+                        description: "The name of the new field.",
+                    },
                 },
-                required: ["modelName", "fieldName"]
-            }
+                required: ["modelName", "fieldName"],
+            },
         },
         {
             name: "remove_note_type_field",
@@ -416,15 +419,15 @@ function getToolDefinitions() {
                 properties: {
                     modelName: {
                         type: "string",
-                        description: "The name of the note type."
+                        description: "The name of the note type.",
                     },
                     fieldName: {
                         type: "string",
-                        description: "The name of the field to remove."
-                    }
+                        description: "The name of the field to remove.",
+                    },
                 },
-                required: ["modelName", "fieldName"]
-            }
+                required: ["modelName", "fieldName"],
+            },
         },
         {
             name: "rename_note_type_field",
@@ -434,19 +437,19 @@ function getToolDefinitions() {
                 properties: {
                     modelName: {
                         type: "string",
-                        description: "The name of the note type."
+                        description: "The name of the note type.",
                     },
                     oldFieldName: {
                         type: "string",
-                        description: "The current name of the field."
+                        description: "The current name of the field.",
                     },
                     newFieldName: {
                         type: "string",
-                        description: "The new name for the field."
-                    }
+                        description: "The new name for the field.",
+                    },
                 },
-                required: ["modelName", "oldFieldName", "newFieldName"]
-            }
+                required: ["modelName", "oldFieldName", "newFieldName"],
+            },
         },
         {
             name: "reposition_note_type_field",
@@ -456,19 +459,19 @@ function getToolDefinitions() {
                 properties: {
                     modelName: {
                         type: "string",
-                        description: "The name of the note type."
+                        description: "The name of the note type.",
                     },
                     fieldName: {
                         type: "string",
-                        description: "The name of the field to reposition."
+                        description: "The name of the field to reposition.",
                     },
                     index: {
                         type: "number",
-                        description: "The new 0-based index for the field."
-                    }
+                        description: "The new 0-based index for the field.",
+                    },
                 },
-                required: ["modelName", "fieldName", "index"]
-            }
+                required: ["modelName", "fieldName", "index"],
+            },
         },
         {
             name: "update_note_type_templates",
@@ -478,23 +481,23 @@ function getToolDefinitions() {
                 properties: {
                     modelName: {
                         type: "string",
-                        description: "The name of the note type."
+                        description: "The name of the note type.",
                     },
                     templates: {
                         type: "object",
-                        description: "An object where keys are template names (e.g., \"Card 1\") and values are objects with \"Front\" and \"Back\" HTML content.",
+                        description: 'An object where keys are template names (e.g., "Card 1") and values are objects with "Front" and "Back" HTML content.',
                         additionalProperties: {
                             type: "object",
                             properties: {
                                 Front: { type: "string" },
-                                Back: { type: "string" }
+                                Back: { type: "string" },
                             },
-                            required: ["Front", "Back"]
-                        }
-                    }
+                            required: ["Front", "Back"],
+                        },
+                    },
                 },
-                required: ["modelName", "templates"]
-            }
+                required: ["modelName", "templates"],
+            },
         },
         {
             name: "update_note_type_styling",
@@ -504,15 +507,15 @@ function getToolDefinitions() {
                 properties: {
                     modelName: {
                         type: "string",
-                        description: "The name of the note type."
+                        description: "The name of the note type.",
                     },
                     css: {
                         type: "string",
-                        description: "The new CSS styling."
-                    }
+                        description: "The new CSS styling.",
+                    },
                 },
-                required: ["modelName", "css"]
-            }
+                required: ["modelName", "css"],
+            },
         },
         {
             name: "create_model",
@@ -522,12 +525,12 @@ function getToolDefinitions() {
                 properties: {
                     modelName: {
                         type: "string",
-                        description: "The name for the new note type."
+                        description: "The name for the new note type.",
                     },
                     fieldNames: {
                         type: "array",
                         items: { type: "string" },
-                        description: "List of field names for the new model."
+                        description: "List of field names for the new model.",
                     },
                     cardTemplates: {
                         type: "array",
@@ -536,27 +539,27 @@ function getToolDefinitions() {
                             properties: {
                                 Name: { type: "string" },
                                 Front: { type: "string" },
-                                Back: { type: "string" }
+                                Back: { type: "string" },
                             },
-                            required: ["Name", "Front", "Back"]
+                            required: ["Name", "Front", "Back"],
                         },
-                        description: "Each object defining a card template with Name, Front, and Back HTML."
+                        description: "Each object defining a card template with Name, Front, and Back HTML.",
                     },
                     css: {
                         type: "string",
-                        description: "CSS styling for the model."
+                        description: "CSS styling for the model.",
                     },
                     isCloze: {
                         type: "boolean",
-                        description: "Whether this model is a cloze deletion type. Defaults to false."
+                        description: "Whether this model is a cloze deletion type. Defaults to false.",
                     },
                     modelType: {
                         type: "string",
-                        description: "Type of model (e.g., 'Standard', 'Cloze'). Defaults to 'Standard'."
-                    }
+                        description: "Type of model (e.g., 'Standard', 'Cloze'). Defaults to 'Standard'.",
+                    },
                 },
-                required: ["modelName", "fieldNames", "cardTemplates"]
-            }
+                required: ["modelName", "fieldNames", "cardTemplates"],
+            },
         },
         {
             name: "add_bulk",
@@ -574,31 +577,31 @@ function getToolDefinitions() {
                                     type: "object",
                                     description: "An object where keys are field names and values are their content. Field names must match the target model.",
                                     additionalProperties: { type: "string" },
-                                    minProperties: 1
+                                    minProperties: 1,
                                 },
                                 deckName: {
                                     type: "string",
-                                    description: "Optional: The name of the deck to add the card to. Defaults to the current deck or 'Default'."
+                                    description: "Optional: The name of the deck to add the card to. Defaults to the current deck or 'Default'.",
                                 },
                                 modelName: {
                                     type: "string",
-                                    description: "The name of the Anki note type (model) to use."
+                                    description: "The name of the Anki note type (model) to use.",
                                 },
                                 tags: {
                                     type: "array",
                                     description: "Optional: A list of tags to add to the note.",
                                     items: {
-                                        type: "string"
-                                    }
-                                }
+                                        type: "string",
+                                    },
+                                },
                             },
-                            required: ["fields", "modelName"]
-                        }
-                    }
+                            required: ["fields", "modelName"],
+                        },
+                    },
                 },
-                required: ["notes"]
-            }
-        }
+                required: ["notes"],
+            },
+        },
     ];
 }
 const getDeckModelInfoToolDefinition = {
@@ -609,11 +612,11 @@ const getDeckModelInfoToolDefinition = {
         properties: {
             deckName: {
                 type: "string",
-                description: "The name of the deck to inspect."
-            }
+                description: "The name of the deck to inspect.",
+            },
         },
-        required: ["deckName"]
-    }
+        required: ["deckName"],
+    },
 };
 export function registerToolHandlers(server, getClient) {
     server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -631,24 +634,28 @@ export function registerToolHandlers(server, getClient) {
                 const result = await client.card.answerCards({ answers: answers });
                 const successfulCards = answers
                     .filter((_, index) => result[index])
-                    .map(card => card.cardId);
+                    .map((card) => card.cardId);
                 const failedCards = answers.filter((_, index) => !result[index]);
                 if (failedCards.length > 0) {
-                    const failedCardIds = failedCards.map(card => card.cardId);
-                    throw new Error(`Failed to update cards with IDs: ${failedCardIds.join(', ')}`);
+                    const failedCardIds = failedCards.map((card) => card.cardId);
+                    throw new Error(`Failed to update cards with IDs: ${failedCardIds.join(", ")}`);
                 }
                 return {
-                    content: [{
+                    content: [
+                        {
                             type: "text",
-                            text: `Updated cards ${successfulCards.join(", ")}`
-                        }]
+                            text: `Updated cards ${successfulCards.join(", ")}`,
+                        },
+                    ],
                 };
             }
             case "add_card": {
                 const client = getClient();
                 const fields = toolArgs.fields;
                 const modelName = String(toolArgs.modelName);
-                const deckName = toolArgs.deckName ? String(toolArgs.deckName) : 'Default';
+                const deckName = toolArgs.deckName
+                    ? String(toolArgs.deckName)
+                    : "Default";
                 const tags = toolArgs.tags || [];
                 if (!fields || Object.keys(fields).length === 0) {
                     throw new Error("The 'fields' argument cannot be empty.");
@@ -663,31 +670,37 @@ export function registerToolHandlers(server, getClient) {
                         fields: fields,
                         tags: tags,
                         options: {
-                            allowDuplicate: false
-                        }
+                            allowDuplicate: false,
+                        },
                     },
                 };
                 const result = await client.note.addNote(notePayload);
                 if (result === null || result === 0) {
-                    throw new Error(`Failed to create note. AnkiConnect returned: ${result === null ? 'null (possibly duplicate or invalid model/fields)' : '0 (unknown error)'}`);
+                    throw new Error(`Failed to create note. AnkiConnect returned: ${result === null
+                        ? "null (possibly duplicate or invalid model/fields)"
+                        : "0 (unknown error)"}`);
                 }
                 const noteId = result;
                 return {
-                    content: [{
+                    content: [
+                        {
                             type: "text",
-                            text: `Created note with id ${noteId}.`
-                        }]
+                            text: `Created note with id ${noteId}.`,
+                        },
+                    ],
                 };
             }
             case "add_card_with_audio": {
                 const client = getClient();
                 const fields = toolArgs.fields;
                 const modelName = String(toolArgs.modelName);
-                const deckName = toolArgs.deckName ? String(toolArgs.deckName) : 'Default';
+                const deckName = toolArgs.deckName
+                    ? String(toolArgs.deckName)
+                    : "Default";
                 const tags = toolArgs.tags || [];
                 const sourceField = String(toolArgs.sourceField);
                 const audioField = String(toolArgs.audioField);
-                const language = toolArgs.language ? String(toolArgs.language) : 'en';
+                const language = toolArgs.language ? String(toolArgs.language) : "en";
                 if (!fields || Object.keys(fields).length === 0) {
                     throw new Error("The 'fields' argument cannot be empty.");
                 }
@@ -698,7 +711,7 @@ export function registerToolHandlers(server, getClient) {
                     throw new Error(`Source field '${sourceField}' not found in the provided fields or is empty.`);
                 }
                 if (!languageToVoiceMap[language]) {
-                    throw new Error(`Unsupported language code: '${language}'. Supported languages are: ${Object.keys(languageToVoiceMap).join(', ')}`);
+                    throw new Error(`Unsupported language code: '${language}'. Supported languages are: ${Object.keys(languageToVoiceMap).join(", ")}`);
                 }
                 const audioContent = await generateSpeech(fields[sourceField], language);
                 const fieldsWithAudio = { ...fields, [audioField]: audioContent };
@@ -709,20 +722,24 @@ export function registerToolHandlers(server, getClient) {
                         fields: fieldsWithAudio,
                         tags: tags,
                         options: {
-                            allowDuplicate: false
-                        }
+                            allowDuplicate: false,
+                        },
                     },
                 };
                 const result = await client.note.addNote(notePayload);
                 if (result === null || result === 0) {
-                    throw new Error(`Failed to create note with audio. AnkiConnect returned: ${result === null ? 'null (possibly duplicate or invalid model/fields)' : '0 (unknown error)'}`);
+                    throw new Error(`Failed to create note with audio. AnkiConnect returned: ${result === null
+                        ? "null (possibly duplicate or invalid model/fields)"
+                        : "0 (unknown error)"}`);
                 }
                 const noteId = result;
                 return {
-                    content: [{
+                    content: [
+                        {
                             type: "text",
-                            text: `Created note with id ${noteId} including generated audio in ${language} language.`
-                        }]
+                            text: `Created note with id ${noteId} including generated audio in ${language} language.`,
+                        },
+                    ],
                 };
             }
             case "update_card_with_audio": {
@@ -730,12 +747,12 @@ export function registerToolHandlers(server, getClient) {
                 const noteId = Number(toolArgs.noteId);
                 const sourceField = String(toolArgs.sourceField);
                 const audioField = String(toolArgs.audioField);
-                const language = toolArgs.language ? String(toolArgs.language) : 'en';
+                const language = toolArgs.language ? String(toolArgs.language) : "en";
                 if (isNaN(noteId)) {
                     throw new Error("Invalid noteId provided.");
                 }
                 if (!languageToVoiceMap[language]) {
-                    throw new Error(`Unsupported language code: '${language}'. Supported languages are: ${Object.keys(languageToVoiceMap).join(', ')}`);
+                    throw new Error(`Unsupported language code: '${language}'. Supported languages are: ${Object.keys(languageToVoiceMap).join(", ")}`);
                 }
                 const noteInfo = await client.note.notesInfo({ notes: [noteId] });
                 if (!noteInfo || noteInfo.length === 0) {
@@ -754,15 +771,17 @@ export function registerToolHandlers(server, getClient) {
                     note: {
                         id: noteId,
                         fields: {
-                            [audioField]: audioContent
+                            [audioField]: audioContent,
                         },
                     },
                 });
                 return {
-                    content: [{
+                    content: [
+                        {
                             type: "text",
-                            text: `Successfully updated note ${noteId} with generated audio in ${language} language from the '${sourceField}' field.`
-                        }]
+                            text: `Successfully updated note ${noteId} with generated audio in ${language} language from the '${sourceField}' field.`,
+                        },
+                    ],
                 };
             }
             case "get_due_cards": {
@@ -772,14 +791,16 @@ export function registerToolHandlers(server, getClient) {
                 if (allCardIds.length > 999)
                     allCardIds = allCardIds.slice(0, 999);
                 const cardsData = await client.card.cardsInfo({ cards: allCardIds });
-                const mappedCards = cardsData.map((card) => ({
+                const mappedCards = cardsData
+                    .map((card) => ({
                     cardId: card.cardId,
                     question: cleanWithRegex(card.question),
                     answer: cleanWithRegex(card.answer),
-                    due: card.due
-                })).sort((a, b) => a.due - b.due);
+                    due: card.due,
+                }))
+                    .sort((a, b) => a.due - b.due);
                 return {
-                    content: [{ type: "text", text: JSON.stringify(mappedCards) }]
+                    content: [{ type: "text", text: JSON.stringify(mappedCards) }],
                 };
             }
             case "get_new_cards": {
@@ -789,21 +810,23 @@ export function registerToolHandlers(server, getClient) {
                 if (allCardIds.length > 999)
                     allCardIds = allCardIds.slice(0, 999);
                 const cardsData = await client.card.cardsInfo({ cards: allCardIds });
-                const mappedCards = cardsData.map((card) => ({
+                const mappedCards = cardsData
+                    .map((card) => ({
                     cardId: card.cardId,
                     question: cleanWithRegex(card.question),
                     answer: cleanWithRegex(card.answer),
-                    due: card.due
-                })).sort((a, b) => a.due - b.due);
+                    due: card.due,
+                }))
+                    .sort((a, b) => a.due - b.due);
                 return {
-                    content: [{ type: "text", text: JSON.stringify(mappedCards) }]
+                    content: [{ type: "text", text: JSON.stringify(mappedCards) }],
                 };
             }
             case "get_deck_names": {
                 const client = getClient();
                 const deckNames = await client.deck.deckNames();
                 return {
-                    content: [{ type: "text", text: JSON.stringify(deckNames) }]
+                    content: [{ type: "text", text: JSON.stringify(deckNames) }],
                 };
             }
             case "find_cards": {
@@ -825,7 +848,7 @@ export function registerToolHandlers(server, getClient) {
                 }
                 const cardsInfoRaw = await client.card.cardsInfo({ cards: allCardIds });
                 console.error(`[MCP Anki Client] find-cards: Fetched info for ${cardsInfoRaw.length} cards.`);
-                const detailedCardsInfo = cardsInfoRaw.map(card => ({
+                const detailedCardsInfo = cardsInfoRaw.map((card) => ({
                     cardId: card.cardId,
                     noteId: card.note,
                     deckName: card.deckName,
@@ -836,12 +859,12 @@ export function registerToolHandlers(server, getClient) {
                     sfld: cleanWithRegex(card.sfld || ""),
                     fields: Object.fromEntries(Object.entries(card.fields).map(([fieldName, fieldData]) => [
                         fieldName,
-                        cleanWithRegex(fieldData.value)
-                    ]))
+                        cleanWithRegex(fieldData.value),
+                    ])),
                 }));
                 detailedCardsInfo.sort((a, b) => a.sfld.localeCompare(b.sfld));
                 return {
-                    content: [{ type: "text", text: JSON.stringify(detailedCardsInfo) }]
+                    content: [{ type: "text", text: JSON.stringify(detailedCardsInfo) }],
                 };
             }
             case "update_note_fields": {
@@ -861,7 +884,12 @@ export function registerToolHandlers(server, getClient) {
                     },
                 });
                 return {
-                    content: [{ type: "text", text: `Successfully requested update for fields of note ID: ${noteId}` }]
+                    content: [
+                        {
+                            type: "text",
+                            text: `Successfully requested update for fields of note ID: ${noteId}`,
+                        },
+                    ],
                 };
             }
             case "create_deck": {
@@ -872,19 +900,29 @@ export function registerToolHandlers(server, getClient) {
                 }
                 await client.deck.createDeck({ deck: deckName });
                 return {
-                    content: [{ type: "text", text: `Successfully created deck: ${deckName}` }]
+                    content: [
+                        { type: "text", text: `Successfully created deck: ${deckName}` },
+                    ],
                 };
             }
             case "bulk_update_notes": {
                 const client = getClient();
                 const notesToUpdate = toolArgs.notes;
-                if (!notesToUpdate || !Array.isArray(notesToUpdate) || notesToUpdate.length === 0) {
+                if (!notesToUpdate ||
+                    !Array.isArray(notesToUpdate) ||
+                    notesToUpdate.length === 0) {
                     throw new Error("Invalid or empty 'notes' array provided for bulk_update_notes tool.");
                 }
                 const results = [];
                 for (const note of notesToUpdate) {
-                    if (isNaN(note.noteId) || !note.fields || Object.keys(note.fields).length === 0) {
-                        results.push({ noteId: note.noteId, success: false, error: "Invalid noteId or empty fields for a note." });
+                    if (isNaN(note.noteId) ||
+                        !note.fields ||
+                        Object.keys(note.fields).length === 0) {
+                        results.push({
+                            noteId: note.noteId,
+                            success: false,
+                            error: "Invalid noteId or empty fields for a note.",
+                        });
                         continue;
                     }
                     try {
@@ -897,21 +935,31 @@ export function registerToolHandlers(server, getClient) {
                         results.push({ noteId: note.noteId, success: true });
                     }
                     catch (e) {
-                        results.push({ noteId: note.noteId, success: false, error: e.message });
+                        results.push({
+                            noteId: note.noteId,
+                            success: false,
+                            error: e.message,
+                        });
                     }
                 }
-                const successfulUpdates = results.filter(r => r.success).map(r => r.noteId);
-                const failedUpdates = results.filter(r => !r.success);
-                let summary = `Bulk update process completed. Successfully updated notes: ${successfulUpdates.join(', ') || 'None'}.`;
+                const successfulUpdates = results
+                    .filter((r) => r.success)
+                    .map((r) => r.noteId);
+                const failedUpdates = results.filter((r) => !r.success);
+                let summary = `Bulk update process completed. Successfully updated notes: ${successfulUpdates.join(", ") || "None"}.`;
                 if (failedUpdates.length > 0) {
-                    summary += ` Failed updates: ${failedUpdates.map(f => `ID ${f.noteId} (Error: ${f.error})`).join('; ')}.`;
+                    summary += ` Failed updates: ${failedUpdates
+                        .map((f) => `ID ${f.noteId} (Error: ${f.error})`)
+                        .join("; ")}.`;
                 }
                 return { content: [{ type: "text", text: summary }] };
             }
             case "get_model_names": {
                 const client = getClient();
                 const modelNames = await client.model.modelNames();
-                return { content: [{ type: "text", text: JSON.stringify(modelNames) }] };
+                return {
+                    content: [{ type: "text", text: JSON.stringify(modelNames) }],
+                };
             }
             case "get_model_details": {
                 const client = getClient();
@@ -921,7 +969,14 @@ export function registerToolHandlers(server, getClient) {
                 const fieldNames = await client.model.modelFieldNames({ modelName });
                 const templates = await client.model.modelTemplates({ modelName });
                 const css = await client.model.modelStyling({ modelName });
-                return { content: [{ type: "text", text: JSON.stringify({ modelName, fieldNames, templates, css }) }] };
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify({ modelName, fieldNames, templates, css }),
+                        },
+                    ],
+                };
             }
             case "add_note_type_field": {
                 const client = getClient();
@@ -933,8 +988,19 @@ export function registerToolHandlers(server, getClient) {
                 if (currentFields.includes(fieldName)) {
                     throw new Error(`Field '${fieldName}' already exists in model '${modelName}'.`);
                 }
-                await client.model.modelFieldAdd({ modelName: modelName, fieldName: fieldName, index: currentFields.length });
-                return { content: [{ type: "text", text: `Successfully added field '${fieldName}' to model '${modelName}'.` }] };
+                await client.model.modelFieldAdd({
+                    modelName: modelName,
+                    fieldName: fieldName,
+                    index: currentFields.length,
+                });
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `Successfully added field '${fieldName}' to model '${modelName}'.`,
+                        },
+                    ],
+                };
             }
             case "remove_note_type_field": {
                 const client = getClient();
@@ -946,8 +1012,18 @@ export function registerToolHandlers(server, getClient) {
                 if (!currentFields.includes(fieldName)) {
                     throw new Error(`Field '${fieldName}' does not exist in model '${modelName}'.`);
                 }
-                await client.model.modelFieldRemove({ modelName: modelName, fieldName: fieldName });
-                return { content: [{ type: "text", text: `Successfully removed field '${fieldName}' from model '${modelName}'.` }] };
+                await client.model.modelFieldRemove({
+                    modelName: modelName,
+                    fieldName: fieldName,
+                });
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `Successfully removed field '${fieldName}' from model '${modelName}'.`,
+                        },
+                    ],
+                };
             }
             case "rename_note_type_field": {
                 const client = getClient();
@@ -961,11 +1037,23 @@ export function registerToolHandlers(server, getClient) {
                 if (!currentFields.includes(oldFieldName)) {
                     throw new Error(`Field '${oldFieldName}' does not exist in model '${modelName}'.`);
                 }
-                if (currentFields.includes(newFieldName) && oldFieldName !== newFieldName) {
+                if (currentFields.includes(newFieldName) &&
+                    oldFieldName !== newFieldName) {
                     throw new Error(`Field '${newFieldName}' already exists in model '${modelName}'. Cannot rename.`);
                 }
-                await client.model.modelFieldRename({ modelName: modelName, oldFieldName: oldFieldName, newFieldName: newFieldName });
-                return { content: [{ type: "text", text: `Successfully renamed field '${oldFieldName}' to '${newFieldName}' in model '${modelName}'.` }] };
+                await client.model.modelFieldRename({
+                    modelName: modelName,
+                    oldFieldName: oldFieldName,
+                    newFieldName: newFieldName,
+                });
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `Successfully renamed field '${oldFieldName}' to '${newFieldName}' in model '${modelName}'.`,
+                        },
+                    ],
+                };
             }
             case "reposition_note_type_field": {
                 const client = getClient();
@@ -982,8 +1070,19 @@ export function registerToolHandlers(server, getClient) {
                 if (newIndex < 0 || newIndex >= currentFields.length) {
                     throw new Error(`Index ${newIndex} is out of bounds for model '${modelName}'. Valid range is 0 to ${currentFields.length - 1}.`);
                 }
-                await client.model.modelFieldReposition({ modelName: modelName, fieldName: fieldName, index: newIndex });
-                return { content: [{ type: "text", text: `Successfully repositioned field '${fieldName}' to index ${newIndex} in model '${modelName}'.` }] };
+                await client.model.modelFieldReposition({
+                    modelName: modelName,
+                    fieldName: fieldName,
+                    index: newIndex,
+                });
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `Successfully repositioned field '${fieldName}' to index ${newIndex} in model '${modelName}'.`,
+                        },
+                    ],
+                };
             }
             case "update_note_type_templates": {
                 const client = getClient();
@@ -991,8 +1090,17 @@ export function registerToolHandlers(server, getClient) {
                 const templates = toolArgs.templates;
                 if (!modelName || !templates)
                     throw new Error("modelName and templates parameters are required.");
-                await client.model.updateModelTemplates({ model: { name: modelName, templates: templates } });
-                return { content: [{ type: "text", text: `Successfully updated templates for model '${modelName}'.` }] };
+                await client.model.updateModelTemplates({
+                    model: { name: modelName, templates: templates },
+                });
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `Successfully updated templates for model '${modelName}'.`,
+                        },
+                    ],
+                };
             }
             case "update_note_type_styling": {
                 const client = getClient();
@@ -1000,8 +1108,17 @@ export function registerToolHandlers(server, getClient) {
                 const css = String(toolArgs.css);
                 if (!modelName || css === undefined)
                     throw new Error("modelName and css parameters are required.");
-                await client.model.updateModelStyling({ model: { name: modelName, css: css } });
-                return { content: [{ type: "text", text: `Successfully updated styling for model '${modelName}'.` }] };
+                await client.model.updateModelStyling({
+                    model: { name: modelName, css: css },
+                });
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `Successfully updated styling for model '${modelName}'.`,
+                        },
+                    ],
+                };
             }
             case "create_model": {
                 const client = getClient();
@@ -1009,8 +1126,12 @@ export function registerToolHandlers(server, getClient) {
                 const fieldNames = toolArgs.fieldNames;
                 const cardTemplates = toolArgs.cardTemplates;
                 const css = toolArgs.css ? String(toolArgs.css) : "";
-                const isCloze = typeof toolArgs.isCloze === 'boolean' ? toolArgs.isCloze : false;
-                if (!modelName || !fieldNames || fieldNames.length === 0 || !cardTemplates || cardTemplates.length === 0) {
+                const isCloze = typeof toolArgs.isCloze === "boolean" ? toolArgs.isCloze : false;
+                if (!modelName ||
+                    !fieldNames ||
+                    fieldNames.length === 0 ||
+                    !cardTemplates ||
+                    cardTemplates.length === 0) {
                     throw new Error("modelName, fieldNames (non-empty), and cardTemplates (non-empty) are required.");
                 }
                 await client.model.createModel({
@@ -1018,21 +1139,30 @@ export function registerToolHandlers(server, getClient) {
                     inOrderFields: fieldNames,
                     css: css,
                     isCloze: isCloze,
-                    cardTemplates: cardTemplates.map(ct => ({
+                    cardTemplates: cardTemplates.map((ct) => ({
                         Name: ct.Name,
                         Front: ct.Front,
-                        Back: ct.Back
-                    }))
+                        Back: ct.Back,
+                    })),
                 });
-                return { content: [{ type: "text", text: `Successfully created model '${modelName}'.` }] };
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `Successfully created model '${modelName}'.`,
+                        },
+                    ],
+                };
             }
             case "add_bulk": {
                 const client = getClient();
                 const notesInput = toolArgs.notes;
-                if (!notesInput || !Array.isArray(notesInput) || notesInput.length === 0) {
+                if (!notesInput ||
+                    !Array.isArray(notesInput) ||
+                    notesInput.length === 0) {
                     throw new Error("Invalid or empty 'notes' array provided for add_bulk tool.");
                 }
-                const notesPayload = notesInput.map(noteArg => {
+                const notesPayload = notesInput.map((noteArg) => {
                     if (!noteArg.fields || Object.keys(noteArg.fields).length === 0) {
                         throw new Error(`A note in the 'notes' array is missing 'fields' or has empty 'fields'. Validation failed for note: ${JSON.stringify(noteArg)}`);
                     }
@@ -1040,16 +1170,18 @@ export function registerToolHandlers(server, getClient) {
                         throw new Error(`A note in the 'notes' array is missing 'modelName'. Validation failed for note: ${JSON.stringify(noteArg)}`);
                     }
                     return {
-                        deckName: noteArg.deckName || 'Default',
+                        deckName: noteArg.deckName || "Default",
                         modelName: noteArg.modelName,
                         fields: noteArg.fields,
                         tags: noteArg.tags || [],
                         options: {
-                            allowDuplicate: false
-                        }
+                            allowDuplicate: false,
+                        },
                     };
                 });
-                const ankiResults = await client.note.addNotes({ notes: notesPayload });
+                const ankiResults = (await client.note.addNotes({
+                    notes: notesPayload,
+                }));
                 const successfulIds = [];
                 const errors = [];
                 if (ankiResults === null) {
@@ -1061,21 +1193,25 @@ export function registerToolHandlers(server, getClient) {
                     }
                     else {
                         const failedNotePayload = notesPayload[index];
-                        const firstFieldKey = Object.keys(failedNotePayload.fields)[0] || '[No Fields]';
-                        const firstFieldValue = failedNotePayload.fields[firstFieldKey] || '[N/A]';
-                        const failureReason = noteId === null ? "null (e.g., duplicate, invalid model/fields for note)" : "0 (unknown error for note)";
+                        const firstFieldKey = Object.keys(failedNotePayload.fields)[0] || "[No Fields]";
+                        const firstFieldValue = failedNotePayload.fields[firstFieldKey] || "[N/A]";
+                        const failureReason = noteId === null
+                            ? "null (e.g., duplicate, invalid model/fields for note)"
+                            : "0 (unknown error for note)";
                         errors.push(`Note ${index + 1} (Model: '${failedNotePayload.modelName}', Deck: '${failedNotePayload.deckName}', First Field ('${firstFieldKey}'): '${firstFieldValue.substring(0, 20)}...') failed. Reason: ${failureReason}`);
                     }
                 });
-                let responseText = `Bulk add operation finished. Successfully added ${successfulIds.length} of ${notesInput.length} notes. IDs: ${successfulIds.join(', ') || 'None'}.`;
+                let responseText = `Bulk add operation finished. Successfully added ${successfulIds.length} of ${notesInput.length} notes. IDs: ${successfulIds.join(", ") || "None"}.`;
                 if (errors.length > 0) {
-                    responseText += `\nErrors encountered for ${errors.length} notes:\n- ${errors.join('\n- ')}`;
+                    responseText += `\nErrors encountered for ${errors.length} notes:\n- ${errors.join("\n- ")}`;
                 }
                 return {
-                    content: [{
+                    content: [
+                        {
                             type: "text",
-                            text: responseText
-                        }]
+                            text: responseText,
+                        },
+                    ],
                 };
             }
             case "get_deck_model_info": {
@@ -1087,52 +1223,66 @@ export function registerToolHandlers(server, getClient) {
                 const allDeckNames = await client.deck.deckNames();
                 if (!allDeckNames.includes(deckName)) {
                     return {
-                        content: [{
+                        content: [
+                            {
                                 type: "text",
                                 text: JSON.stringify({
                                     deckName: deckName,
-                                    status: "deck_not_found"
-                                })
-                            }]
+                                    status: "deck_not_found",
+                                }),
+                            },
+                        ],
                     };
                 }
-                const cardIdsInDeck = await client.card.findCards({ query: `deck:"${deckName}"` });
+                const cardIdsInDeck = await client.card.findCards({
+                    query: `deck:"${deckName}"`,
+                });
                 if (cardIdsInDeck.length === 0) {
                     return {
-                        content: [{
+                        content: [
+                            {
                                 type: "text",
                                 text: JSON.stringify({
                                     deckName: deckName,
-                                    status: "no_notes_found"
-                                })
-                            }]
+                                    status: "no_notes_found",
+                                }),
+                            },
+                        ],
                     };
                 }
-                const sampleCardIds = cardIdsInDeck.length > 50 ? cardIdsInDeck.slice(0, 50) : cardIdsInDeck;
+                const sampleCardIds = cardIdsInDeck.length > 50
+                    ? cardIdsInDeck.slice(0, 50)
+                    : cardIdsInDeck;
                 const cardsInfo = await client.card.cardsInfo({ cards: sampleCardIds });
-                const uniqueModelNames = [...new Set(cardsInfo.map(card => card.modelName))];
+                const uniqueModelNames = [
+                    ...new Set(cardsInfo.map((card) => card.modelName)),
+                ];
                 if (uniqueModelNames.length === 1) {
                     return {
-                        content: [{
+                        content: [
+                            {
                                 type: "text",
                                 text: JSON.stringify({
                                     deckName: deckName,
                                     status: "single_model_found",
-                                    modelName: uniqueModelNames[0]
-                                })
-                            }]
+                                    modelName: uniqueModelNames[0],
+                                }),
+                            },
+                        ],
                     };
                 }
                 else {
                     return {
-                        content: [{
+                        content: [
+                            {
                                 type: "text",
                                 text: JSON.stringify({
                                     deckName: deckName,
                                     status: "multiple_models_found",
-                                    modelNames: uniqueModelNames.sort()
-                                })
-                            }]
+                                    modelNames: uniqueModelNames.sort(),
+                                }),
+                            },
+                        ],
                     };
                 }
             }
