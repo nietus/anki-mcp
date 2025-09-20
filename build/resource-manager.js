@@ -67,21 +67,21 @@ export function registerResourceHandlers(server, getClient) {
                     uri: "anki://search/deckcurrent",
                     mimeType: "application/json",
                     name: "Current Deck",
-                    description: "Current Anki deck"
+                    description: "Current Anki deck",
                 },
                 {
                     uri: "anki://search/isdue",
                     mimeType: "application/json",
                     name: "Due cards",
-                    description: "Cards in review and learning waiting to be studied"
+                    description: "Cards in review and learning waiting to be studied",
                 },
                 {
                     uri: "anki://search/isnew",
                     mimeType: "application/json",
                     name: "New cards",
-                    description: "All unseen cards"
-                }
-            ]
+                    description: "All unseen cards",
+                },
+            ],
         };
     });
     /**
@@ -90,7 +90,7 @@ export function registerResourceHandlers(server, getClient) {
      */
     server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
         const url = new URL(request.params.uri);
-        const queryParts = url.pathname.split('/');
+        const queryParts = url.pathname.split("/");
         const simplifiedQuery = queryParts[queryParts.length - 1];
         if (!simplifiedQuery) {
             throw new Error("Invalid resource URI: unable to extract query from path.");
@@ -99,11 +99,13 @@ export function registerResourceHandlers(server, getClient) {
         const ankiQuery = formatQuery(simplifiedQuery);
         const cards = await findCardsAndOrder(client, ankiQuery);
         return {
-            contents: [{
+            contents: [
+                {
                     uri: request.params.uri,
                     mimeType: "application/json",
-                    text: JSON.stringify(cards)
-                }]
+                    text: JSON.stringify(cards),
+                },
+            ],
         };
     });
 }

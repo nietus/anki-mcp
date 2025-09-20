@@ -3,4 +3,4 @@ export interface Card {
   question: string;
   answer: string;
   due: number;
-} 
+}

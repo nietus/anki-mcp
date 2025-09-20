@@ -14,7 +14,8 @@
     "build": "tsc && node -e \"require('fs').chmodSync('build/client.js', '755')\"",
     "prepare": "npm run build",
     "watch": "tsc --watch",
-    "inspector": "npx @modelcontextprotocol/inspector node build/client.js"
+    "inspector": "npx @modelcontextprotocol/inspector node build/client.js",
+    "pack:mcpb": "npm run build && node scripts/create-mcpb.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "0.6.0",
@@ -26,6 +27,7 @@
     "yanki-connect": "^2.1.8"
   },
   "devDependencies": {
+    "@anthropic-ai/mcpb": "^1.1.0",
     "@types/node": "^20.11.24",
     "typescript": "^5.3.3"
   }

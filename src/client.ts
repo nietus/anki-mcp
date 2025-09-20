@@ -13,9 +13,15 @@ function getAnkiClient(): YankiConnect {
     console.error("[MCP Anki Client] Initializing YankiConnect on demand...");
     try {
       ankiClientInstance = new YankiConnect();
-      console.error("[MCP Anki Client] YankiConnect initialized successfully on demand.");
+      console.error(
+        "[MCP Anki Client] YankiConnect initialized successfully on demand."
+      );
     } catch (e: any) {
-      console.error("[MCP Anki Client] Error initializing YankiConnect on demand:", e.message, e.stack);
+      console.error(
+        "[MCP Anki Client] Error initializing YankiConnect on demand:",
+        e.message,
+        e.stack
+      );
       throw e; // Re-throw to allow callers to handle or report
     }
   }
@@ -55,7 +61,9 @@ async function main() {
   try {
     console.error("[MCP Anki Client] Attempting server.connect(transport)...");
     await server.connect(transport);
-    console.error("[MCP Anki Client] server.connect(transport) completed (this log might not be reached if server runs indefinitely).");
+    console.error(
+      "[MCP Anki Client] server.connect(transport) completed (this log might not be reached if server runs indefinitely)."
+    );
   } catch (error) {
     console.error("[MCP Anki Client] Error during server.connect:", error);
     process.exit(1);

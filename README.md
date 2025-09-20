@@ -68,21 +68,67 @@ Was only tested on windows.
            "/c",
            "node",
            "c:/Users/YOUR_USERNAME/Downloads/anki-mcp/build/client.js"
-         ]
-       }
+       ]
+   }
    ```
 
+6. **Integrate with Claude Desktop using an `.mcpb` bundle:**
+
+   The recommended way to use this server with Claude Desktop is to install it as an MCP extension bundle (`.mcpb` file).
+
+   1. **Build and package the extension:**
+
+      ```bash
+      npm install
+      npm run build
+      npm run pack:mcpb
+      ```
+
+      This will produce a file at `dist/anki-mcp.mcpb`.
+
+   2. **Install the bundle in Claude Desktop:**
+
+      - Open Claude Desktop.
+      - Go to **Settings → Extensions**.
+      - Drag and drop the `dist/anki-mcp.mcpb` file into the Extensions panel.
+
+      Claude will handle launching the server automatically when needed.
+
+   3. **Configure environment variables:**
+
+      When prompted during installation, provide your `AZURE_API_KEY` and `ANKI_MEDIA_DIR` (the path to your Anki `collection.media` folder). These are required for audio features and media file handling.
+
+   That’s it! No manual configuration is needed—Claude Desktop will manage the server for you once the `.mcpb` bundle is installed.
    **macOS / Linux:**
 
-   ```json
-   "anki": {
-         "command": "bash",
-         "args": [
-           "-c",
-           "node /Users/YOUR_USERNAME/Downloads/anki-mcp/build/client.js"
-         ]
-       }
+ ```json
+  "anki": {
+        "command": "bash",
+        "args": [
+          "-c",
+          "node /Users/YOUR_USERNAME/Downloads/anki-mcp/build/client.js"
+        ]
+      }
+  ```
+
+### Create a Claude Desktop extension bundle (.mcpb)
+
+If you want one-click installation inside Claude Desktop, you can package this server as an MCP bundle:
+
+1. Install dependencies and build the project:
+
+   ```bash
+   npm install
+   npm run build
    ```
+
+2. Generate the `.mcpb` bundle (requires the `@anthropic-ai/mcpb` CLI, which expects Node.js 18+):
+
+   ```bash
+   npm run pack:mcpb
+   ```
+
+The script stages the compiled server (`build/`), copies runtime dependencies, and produces `dist/anki-mcp.mcpb`. Drag that file into Claude Desktop's Settings → Extensions panel to install. When prompted, provide the Azure Speech API key and Anki media directory so audio tools can save files in your `collection.media` folder.
 
 ## Available Tools
 
