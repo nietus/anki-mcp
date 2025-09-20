@@ -27,48 +27,50 @@ console.error("ANKI_MEDIA_DIR value:", process.env.ANKI_MEDIA_DIR);
 console.error("AZURE_API_KEY available:", !!process.env.AZURE_API_KEY);
 
 const languageToVoiceMap: Record<string, string> = {
-  "en": "en-US-JennyNeural",
-  "es": "es-ES-ElviraNeural",
-  "fr": "fr-FR-DeniseNeural",
-  "de": "de-DE-KatjaNeural",
-  "it": "it-IT-ElsaNeural",
-  "ja": "ja-JP-NanamiNeural",
-  "ko": "ko-KR-SunHiNeural",
-  "pt": "pt-BR-FranciscaNeural",
-  "ru": "ru-RU-SvetlanaNeural",
-  "zh": "zh-CN-XiaoxiaoNeural",
-  "ar": "ar-EG-SalmaNeural",
-  "nl": "nl-NL-ColetteNeural",
-  "hi": "hi-IN-SwaraNeural",
-  "tr": "tr-TR-EmelNeural",
-  "pl": "pl-PL-ZofiaNeural",
-  "sv": "sv-SE-SofieNeural",
-  "fi": "fi-FI-SelmaNeural",
-  "da": "da-DK-ChristelNeural",
-  "no": "nb-NO-IselinNeural",
-  "cs": "cs-CZ-VlastaNeural",
-  "hu": "hu-HU-NoemiNeural",
-  "el": "el-GR-AthinaNeural",
-  "he": "he-IL-HilaNeural",
-  "th": "th-TH-PremwadeeNeural",
-  "vi": "vi-VN-HoaiMyNeural",
-  "id": "id-ID-GadisNeural",
-  "ms": "ms-MY-YasminNeural",
-  "ro": "ro-RO-AlinaNeural",
+  en: "en-US-JennyNeural",
+  es: "es-ES-ElviraNeural",
+  fr: "fr-FR-DeniseNeural",
+  de: "de-DE-KatjaNeural",
+  it: "it-IT-ElsaNeural",
+  ja: "ja-JP-NanamiNeural",
+  ko: "ko-KR-SunHiNeural",
+  pt: "pt-BR-FranciscaNeural",
+  "pt-PT": "pt-PT-RaquelNeural",
+  ru: "ru-RU-SvetlanaNeural",
+  zh: "zh-CN-XiaoxiaoNeural",
+  ar: "ar-EG-SalmaNeural",
+  nl: "nl-NL-ColetteNeural",
+  hi: "hi-IN-SwaraNeural",
+  tr: "tr-TR-EmelNeural",
+  pl: "pl-PL-ZofiaNeural",
+  sv: "sv-SE-SofieNeural",
+  fi: "fi-FI-SelmaNeural",
+  da: "da-DK-ChristelNeural",
+  no: "nb-NO-IselinNeural",
+  cs: "cs-CZ-VlastaNeural",
+  hu: "hu-HU-NoemiNeural",
+  el: "el-GR-AthinaNeural",
+  he: "he-IL-HilaNeural",
+  th: "th-TH-PremwadeeNeural",
+  vi: "vi-VN-HoaiMyNeural",
+  id: "id-ID-GadisNeural",
+  ms: "ms-MY-YasminNeural",
+  ro: "ro-RO-AlinaNeural",
 };
 
-import * as fs from 'fs';
+import * as fs from "fs";
 
 async function generateSpeech(text: string, language = "en") {
   const subscriptionKey = process.env.AZURE_API_KEY;
   if (!subscriptionKey) {
-    console.error("AZURE_API_KEY not found in environment variables. Audio generation will not work.");
+    console.error(
+      "AZURE_API_KEY not found in environment variables. Audio generation will not work."
+    );
     return `[No audio available - API key missing]`;
   }
 
-  const voice = languageToVoiceMap[language] || "en-US-JennyNeural";
-  const endpoint = "https://eastus.tts.speech.microsoft.com/cognitiveservices/v1";
-  
+  // If no mapping is found, just use the language code as the voice name (let Azure handle it - to test azure voices without rebuild)
+  const voice = languageToVoiceMap[language] || language || "en-US-JennyNeural";
   try {
     console.log(`Generating speech for text: "${text}" in language: ${language}`);
     console.log(`Using endpoint: ${endpoint}`);
