@@ -18,7 +18,20 @@ Highly recommended to run locally, since AnkiConnect only works locally.
 
 Was only tested on windows.
 
-### To run locally:
+### Running locally via `npx`
+
+If you only wish to use the tool and not develop the tool,
+you may launch an MCP STDIO server locally using `npx`:
+
+```sh
+npx -y github:nietus/anki-mcp
+```
+
+This can be used in Desktop MCP clients such as Msty Studio or others.
+
+### Running locally via source code
+
+Alternatively, you can run locally via source code using these instructions:
 
 1. **Clone the repository:**
 
