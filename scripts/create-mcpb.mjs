@@ -36,9 +36,12 @@ async function copyIfExists(source, destination) {
 async function runPack(directory, output) {
   await fsp.mkdir(path.dirname(output), { recursive: true });
   await new Promise((resolve, reject) => {
+
     const child = spawn(
-      "npx",
-      ["@anthropic-ai/mcpb", "pack", directory, output],
+      process.platform === "win32" ? "cmd" : "npx",
+      process.platform === "win32"
+        ? ["/c", "npx", "@anthropic-ai/mcpb", "pack", directory, output]
+        : ["@anthropic-ai/mcpb", "pack", directory, output],
       {
         cwd: rootDir,
         stdio: "inherit",
