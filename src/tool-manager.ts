@@ -625,6 +625,14 @@ function getToolDefinitions() {
       },
     },
     {
+      name: "sync",
+      description: "Triggers a sync of the local Anki collection with AnkiWeb, the same as clicking the sync button in Anki. Requires the user to be logged into AnkiWeb in the Anki desktop app.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+      }
+    },
+    {
       name: "add_bulk",
       description:
         "RECOMMENDED FOR MULTIPLE CARDS: Adds multiple NEW flashcards to Anki in a single operation. Much more efficient than adding cards one by one. ONLY use this for creating NEW cards, NOT for updating existing ones. Will throw errors for any cards that already exist. For updating existing cards, use bulk_update_notes with noteIds instead. Must use HTML formatting for card content.",
@@ -1353,6 +1361,14 @@ export function registerToolHandlers(
               text: `Successfully created model '${modelName}'.`,
             },
           ],
+        };
+      }
+
+      case "sync": {
+        const client = getClient();
+        await client.miscellaneous.sync();
+        return {
+          content: [{ type: "text", text: "Successfully synced with AnkiWeb." }]
         };
       }
 
