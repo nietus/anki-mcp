@@ -286,4 +286,9 @@ The server provides the following tools for interacting with Anki:
     - `deckName`: (optional string) The name of the deck for this note. Defaults to 'Default'.
     - `tags`: (optional array of strings) A list of tags for this note.
 
+- `undo`:
+
+  - Description: Undo the most recent action in Anki's collection — a card review, a field edit, a suspend, etc. Only undoes one action at a time; call repeatedly to undo further back.
+  - Input: None.
+
 More information can be found here [Anki Integration | Smithery](https://smithery.ai/server/@nietus/anki-mcp)
