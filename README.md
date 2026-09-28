@@ -286,6 +286,10 @@ The server provides the following tools for interacting with Anki:
     - `deckName`: (optional string) The name of the deck for this note. Defaults to 'Default'.
     - `tags`: (optional array of strings) A list of tags for this note.
 
+- `sync`:
+
+  - Description: Triggers a sync of the local Anki collection with AnkiWeb, the same as clicking the sync button in Anki. Requires the user to be logged into AnkiWeb in the Anki desktop app.
+
 - `undo`:
 
   - Description: Undo the most recent action in Anki's collection — a card review, a field edit, a suspend, etc. Only undoes one action at a time; call repeatedly to undo further back.
