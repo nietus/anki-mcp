@@ -289,6 +289,10 @@ The server provides the following tools for interacting with Anki:
 - `sync`:
 
   - Description: Triggers a sync of the local Anki collection with AnkiWeb, the same as clicking the sync button in Anki. Requires the user to be logged into AnkiWeb in the Anki desktop app.
+
+- `undo`:
+
+  - Description: Undo the most recent action in Anki's collection — a card review, a field edit, a suspend, etc. Only undoes one action at a time; call repeatedly to undo further back.
   - Input: None.
 
 More information can be found here [Anki Integration | Smithery](https://smithery.ai/server/@nietus/anki-mcp)

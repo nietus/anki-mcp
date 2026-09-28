@@ -162,6 +162,14 @@ function getToolDefinitions() {
             },
         },
         {
+            name: "undo",
+            description: "Undo the most recent action in Anki's collection — a card review, a field edit, a suspend, etc. Only undoes one action at a time; call repeatedly to undo further back.",
+            inputSchema: {
+                type: "object",
+                properties: {},
+            },
+        },
+        {
             name: "add_card",
             description: 'Create a NEW flashcard in Anki for the user. ONLY use this for creating NEW cards, NOT for updating existing ones. Will throw an error if the card already exists. For updating existing cards, use update_note_fields with the noteId instead. Must use HTML formatting only. IMPORTANT FORMATTING RULES:\n1. Must use HTML tags for ALL formatting - NO markdown\n2. Use <br> for ALL line breaks\n3. For code blocks, use <pre> with inline CSS styling\n4. Example formatting:\n   - Line breaks: <br>\n   - Code: <pre style="background-color: transparent; padding: 10px; border-radius: 5px;">\n   - Lists: <ol> and <li> tags\n   - Bold: <strong>\n   - Italic: <em>',
             inputSchema: {
@@ -636,6 +644,21 @@ export function registerToolHandlers(server, getClient) {
         const { name, arguments: args } = request.params;
         const toolArgs = args || {};
         switch (name) {
+            case "undo": {
+                const client = getClient();
+                const succeeded = await client.graphical.guiUndo();
+                if (!succeeded) {
+                    throw new Error("Undo failed: there may be nothing to undo, or the Anki review screen isn't open.");
+                }
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: "Undid the last action.",
+                        },
+                    ],
+                };
+            }
             case "update_cards": {
                 const client = getClient();
                 const answers = toolArgs.answers;
