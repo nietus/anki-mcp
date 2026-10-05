@@ -39,7 +39,7 @@ export function nextReviewsByButton(
     next.map((v, i) => [
       next.length === 4 ? EASE_LABELS[i] : `button${i + 1}`,
       // Anki wraps the numbers in invisible bidi isolate marks.
-      v.replace(/[⁦-⁩]/g, ""),
+      v.replace(/[\u2066-\u2069]/g, ""),
     ])
   );
 }
