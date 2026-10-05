@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.nietus/anki-mcp",
+  "title": "Anki",
+  "description": "Study and manage Anki flashcards via AnkiConnect: quizzes, stats, leeches, bulk edits.",
+  "repository": {
+    "url": "https://github.com/nietus/anki-mcp",
+    "source": "github"
+  },
+  "version": "0.2.0",
+  "packages": [
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/nietus/anki-mcp/releases/download/v0.2.0/anki-mcp.mcpb",
+      "fileSha256": "79f429e01b4abb8af26a23a05900d9aced901a468fa0ffa3a648d675043c7a25",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
