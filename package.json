@@ -1,7 +1,7 @@
 {
   "name": "anki-mcp",
   "version": "0.2.0",
-  "description": "A server to integrate with Anki via the AnkiConnect   plugin ",
+  "description": "MCP server for Anki: study, analyse and manage your flashcards from Claude and other MCP clients via AnkiConnect",
   "private": true,
   "type": "module",
   "bin": {
@@ -28,5 +28,19 @@
     "@types/node": "^20.11.24",
     "typescript": "^5.3.3",
     "vitest": "^5.0.2"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nietus/anki-mcp.git"
+  },
+  "keywords": [
+    "anki",
+    "mcp",
+    "model-context-protocol",
+    "flashcards",
+    "spaced-repetition",
+    "ankiconnect",
+    "claude"
+  ]
 }

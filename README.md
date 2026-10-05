@@ -1,140 +1,66 @@
 # anki-mcp
 
+[![tests](https://github.com/nietus/anki-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/nietus/anki-mcp/actions/workflows/test.yml)
 [![smithery badge](https://smithery.ai/badge/@nietus/anki-mcp)](https://smithery.ai/server/@nietus/anki-mcp)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-MCP server for Anki. This server allows interaction with Anki through the Model Context Protocol (MCP). It enables users to manage flashcards, decks, and review processes programmatically.
+Study and manage your [Anki](https://apps.ankiweb.net/) collection by talking to Claude (or any MCP client). 35 tools over [AnkiConnect](https://ankiweb.net/shared/info/2055492159): get quizzed in chat, see what is due and how your retention is going, find the cards you keep forgetting, create and clean up notes in bulk, and pause whole groups of cards until you want them back.
 
 [![Watch the video](public/0521.png)](https://www.youtube.com/watch?v=NZomvkf8bio)
 
-## Prerequisites
+## What you can ask
 
-- Node.js and npm installed.
-- AnkiConnect plugin installed and running in Anki.
-- For audio features: Azure API key (set in `.env` file as `AZURE_API_KEY`). Generated audio is saved to the active profile's `collection.media` folder through AnkiConnect, so no media path needs to be configured.
+- "What do I have to study today?" → due counts per deck, streak, reviews this week.
+- "Quiz me on 10 due cards from my Spanish deck." → one question at a time, graded, and recorded in Anki with the next interval.
+- "Which cards do I keep getting wrong? Help me fix them." → leeches, their review history, and rewrites you approve.
+- "Suspend everything tagged HSK5 until my exam, and make it easy to bring back." → named pause that restores exactly those cards, scheduling intact.
+- "Turn this article into cloze cards in my Biology deck." → duplicate-checked bulk add.
+- "Add audio to every card in this deck that doesn't have it." → Azure TTS in bulk.
+- "Move the cards tagged `grammar` to a new subdeck" / "rename the tag `todo` to `review`" / "spread my backlog over the next two weeks".
 
-## Setup and Execution
+Bulk changes can be previewed with a dry run, deleting always needs a confirmation step, and when Anki is closed the assistant is told to ask you to open it instead of failing silently.
 
-Highly recommended to run locally, since AnkiConnect only works locally.
+## Install
 
-Was only tested on windows.
+You need [Node.js](https://nodejs.org/) 18+, Anki running, and the **AnkiConnect** add-on (code `2055492159`).
 
-### Running locally via `npx`
+### Claude Desktop
 
-If you only wish to use the tool and not develop the tool,
-you may launch an MCP STDIO server locally using `npx`:
+Download `anki-mcp.mcpb` from the [latest release](https://github.com/nietus/anki-mcp/releases/latest) and drag it into **Settings → Extensions**. That's it.
 
-```sh
-npx -y github:nietus/anki-mcp
+### Claude Code
+
+```bash
+claude mcp add anki --scope user -- npx -y github:nietus/anki-mcp
 ```
 
-This can be used in Desktop MCP clients such as Msty Studio or others.
+### Cursor and other MCP clients
 
-### Running locally via source code
+Add this to the client's MCP configuration:
 
-Alternatively, you can run locally via source code using these instructions:
+```json
+{
+  "mcpServers": {
+    "anki": {
+      "command": "npx",
+      "args": ["-y", "github:nietus/anki-mcp"]
+    }
+  }
+}
+```
 
-1. **Clone the repository:**
+On Windows, if the client cannot start `npx` directly, use `"command": "cmd"` with `"args": ["/c", "npx", "-y", "github:nietus/anki-mcp"]`.
 
-   ```bash
-   git clone https://github.com/nietus/anki-mcp
-   ```
+### From source
 
-2. **Install dependencies:**
+```bash
+git clone https://github.com/nietus/anki-mcp
+cd anki-mcp
+npm install
+npm run build
+```
 
-   ```bash
-   npm install
-   ```
-
-3. **Build the project**
-
-   ```bash
-   npm run build
-   ```
-
-4. **Setup for Audio Features (If you want to use audio tools):**
-
-   Create a .env file in the root directory with your Azure API key:
-
-   ```
-   AZURE_API_KEY=your_azure_api_key_here
-   ```
-
-   Generated audio files are stored in the active Anki profile's `collection.media` folder through AnkiConnect, so no media directory needs to be configured.
-
-5. **Integrate with Cursor settings (for local execution):**
-
-   To run your local build of anki-mcp with Cursor, you need to tell Cursor how to start the server. Below are example configurations which you can access on cursor settings. Replace YOUR_USERNAME and adjust the path if you cloned anki-mcp to a different location than Downloads.
-
-   **Windows:**
-
-   ```json
-   "anki": {
-         "command": "cmd",
-         "args": [
-           "/c",
-           "node",
-           "c:/Users/YOUR_USERNAME/Downloads/anki-mcp/build/client.js"
-       ]
-   }
-   ```
-
-6. **Integrate with Claude Desktop using an `.mcpb` bundle:**
-
-   The recommended way to use this server with Claude Desktop is to install it as an MCP extension bundle (`.mcpb` file).
-
-   1. **Build and package the extension:**
-
-      ```bash
-      npm install
-      npm run build
-      npm run pack:mcpb
-      ```
-
-      This will produce a file at `dist/anki-mcp.mcpb`.
-
-   2. **Install the bundle in Claude Desktop:**
-
-      - Open Claude Desktop.
-      - Go to **Settings → Extensions**.
-      - Drag and drop the `dist/anki-mcp.mcpb` file into the Extensions panel.
-
-      Claude will handle launching the server automatically when needed.
-
-   3. **Configure environment variables:**
-
-      When prompted during installation, provide your `AZURE_API_KEY`. It is only required for the audio tools.
-
-   That’s it! No manual configuration is needed—Claude Desktop will manage the server for you once the `.mcpb` bundle is installed.
-   **macOS / Linux:**
-
- ```json
-  "anki": {
-        "command": "bash",
-        "args": [
-          "-c",
-          "node /Users/YOUR_USERNAME/Downloads/anki-mcp/build/client.js"
-        ]
-      }
-  ```
-
-### Create a Claude Desktop extension bundle (.mcpb)
-
-If you want one-click installation inside Claude Desktop, you can package this server as an MCP bundle:
-
-1. Install dependencies and build the project:
-
-   ```bash
-   npm install
-   npm run build
-   ```
-
-2. Generate the `.mcpb` bundle (requires the `@anthropic-ai/mcpb` CLI, which expects Node.js 18+):
-
-   ```bash
-   npm run pack:mcpb
-   ```
-
-The script stages the compiled server (`build/`), copies runtime dependencies, and produces `dist/anki-mcp.mcpb`. Drag that file into Claude Desktop's Settings → Extensions panel to install. When prompted, provide the Azure Speech API key if you want to use the audio tools.
+Then point your client at `node /path/to/anki-mcp/build/client.js`. To build the Claude Desktop bundle yourself, run `npm run pack:mcpb` (output in `dist/anki-mcp.mcpb`).
 
 ## Configuration
 
@@ -232,4 +158,6 @@ Supported languages: en, es, fr, de, it, ja, ko, pt, pt-PT, ru, zh, ar, nl, hi, 
 - `anki://deck/{deckName}/overview` – due counts for one deck.
 - `anki://model/{modelName}` – fields, templates and CSS of a note type.
 
-More information can be found here [Anki Integration | Smithery](https://smithery.ai/server/@nietus/anki-mcp)
+## License
+
+[MIT](LICENSE)
