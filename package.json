@@ -1,6 +1,6 @@
 {
   "name": "anki-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A server to integrate with Anki via the AnkiConnect   plugin ",
   "private": true,
   "type": "module",
@@ -15,20 +15,18 @@
     "prepare": "npm run build",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector node build/client.js",
-    "pack:mcpb": "npm run build && node scripts/create-mcpb.mjs"
+    "pack:mcpb": "npm run build && node scripts/create-mcpb.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "0.6.0",
-    "axios": "^1.9.0",
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "dotenv": "^16.5.0",
-    "microsoft-cognitiveservices-speech-sdk": "^1.43.1",
-    "tsx": "^4.19.3",
-    "uuid": "^11.1.0",
     "yanki-connect": "^2.1.8"
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "^1.1.0",
     "@types/node": "^20.11.24",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^5.0.2"
   }
 }

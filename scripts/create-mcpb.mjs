@@ -13,7 +13,6 @@ const outputFile = path.join(rootDir, "dist", "anki-mcp.mcpb");
 
 const manifestPath = path.join(rootDir, "manifest.json");
 const buildDir = path.join(rootDir, "build");
-const nodeModulesDir = path.join(rootDir, "node_modules");
 const packageJsonPath = path.join(rootDir, "package.json");
 const packageLockPath = path.join(rootDir, "package-lock.json");
 
@@ -33,36 +32,32 @@ async function copyIfExists(source, destination) {
   }
 }
 
-async function runPack(directory, output) {
-  await fsp.mkdir(path.dirname(output), { recursive: true });
-  await new Promise((resolve, reject) => {
-
+function run(command, args) {
+  return new Promise((resolve, reject) => {
     const child = spawn(
-      process.platform === "win32" ? "cmd" : "npx",
-      process.platform === "win32"
-        ? ["/c", "npx", "@anthropic-ai/mcpb", "pack", directory, output]
-        : ["@anthropic-ai/mcpb", "pack", directory, output],
-      {
-        cwd: rootDir,
-        stdio: "inherit",
-      }
+      process.platform === "win32" ? "cmd" : command,
+      process.platform === "win32" ? ["/c", command, ...args] : args,
+      { cwd: rootDir, stdio: "inherit" }
     );
-
     child.on("error", reject);
     child.on("exit", (code) => {
       if (code === 0) {
         resolve();
       } else {
-        reject(new Error(`mcpb pack exited with code ${code}`));
+        reject(new Error(`${command} ${args[0]} exited with code ${code}`));
       }
     });
   });
 }
 
+async function runPack(directory, output) {
+  await fsp.mkdir(path.dirname(output), { recursive: true });
+  await run("npx", ["@anthropic-ai/mcpb", "pack", directory, output]);
+}
+
 async function main() {
   await ensureExists(manifestPath, "manifest.json");
   await ensureExists(buildDir, "build output");
-  await ensureExists(nodeModulesDir, "node_modules directory");
 
   await fsp.rm(stagingDir, { recursive: true, force: true });
   await fsp.mkdir(serverDir, { recursive: true });
@@ -75,9 +70,17 @@ async function main() {
     packageLockPath,
     path.join(stagingDir, "package-lock.json")
   );
-  await fsp.cp(nodeModulesDir, path.join(stagingDir, "node_modules"), {
-    recursive: true,
-  });
+  // Install production dependencies only, so dev tools (vitest, typescript...)
+  // don't bloat the bundle.
+  await run("npm", [
+    "ci",
+    "--omit=dev",
+    "--ignore-scripts",
+    "--no-audit",
+    "--no-fund",
+    "--prefix",
+    stagingDir,
+  ]);
 
   await runPack(stagingDir, outputFile);
 

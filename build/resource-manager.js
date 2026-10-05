@@ -1,110 +1,100 @@
-import { ListResourcesRequestSchema, ReadResourceRequestSchema, } from "@modelcontextprotocol/sdk/types.js";
-import { cleanWithRegex } from "./utils.js";
-/**
- * Fetches Anki cards based on a query, retrieves their information,
- * cleans the content, and sorts them by due date.
- * @param client - The YankiConnect client instance.
- * @param ankiQuery - The Anki search query
- * @returns A promise that resolves to an array of Card objects.
- */
-async function findCardsAndOrder(client, ankiQuery) {
-    console.error(`[MCP Anki Client] findCardsAndOrder: Processing query='${ankiQuery}'`);
-    let allCardIds = await client.card.findCards({ query: ankiQuery });
-    console.error(`[MCP Anki Client] findCardsAndOrder: Found ${allCardIds.length} total card IDs for query '${ankiQuery}'.`);
-    if (allCardIds.length === 0) {
-        return [];
+import { ListResourceTemplatesRequestSchema, ListResourcesRequestSchema, ReadResourceRequestSchema, } from "@modelcontextprotocol/sdk/types.js";
+import { describeError } from "./anki.js";
+import { fetchStudyCards } from "./cards.js";
+import { studyOverview } from "./tools/decks.js";
+import { modelDetails } from "./tools/models.js";
+/** Card lists exposed as resources are capped so reading one stays cheap. */
+const RESOURCE_CARD_LIMIT = 50;
+const CARD_SEARCHES = {
+    deckcurrent: "deck:current",
+    isdue: "is:due",
+    isnew: "is:new -is:suspended",
+};
+async function readResource(client, uri) {
+    const url = new URL(uri);
+    const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+    switch (url.host) {
+        case "search": {
+            const query = CARD_SEARCHES[parts[0]?.toLowerCase()];
+            if (!query)
+                throw new Error(`Unknown search resource: ${uri}`);
+            return fetchStudyCards(client, query, RESOURCE_CARD_LIMIT);
+        }
+        case "collection":
+            if (parts[0] === "overview")
+                return studyOverview(client, []);
+            break;
+        case "deck":
+            // anki://deck/{deckName}/overview
+            if (parts.length === 2 && parts[1] === "overview") {
+                return studyOverview(client, [parts[0]]);
+            }
+            break;
+        case "model":
+            // anki://model/{modelName}
+            if (parts.length === 1)
+                return modelDetails(client, parts[0]);
+            break;
     }
-    if (allCardIds.length > 999) {
-        console.warn(`[MCP Anki Client] findCardsAndOrder: Query '${ankiQuery}' returned ${allCardIds.length} cards. Limiting to 999.`);
-        allCardIds = allCardIds.slice(0, 999);
-    }
-    console.error(`[MCP Anki Client] findCardsAndOrder: Fetching card info for ${allCardIds.length} IDs.`);
-    const cardsData = await client.card.cardsInfo({ cards: allCardIds });
-    const mappedCards = cardsData.map((card) => ({
-        cardId: card.cardId,
-        question: cleanWithRegex(card.question),
-        answer: cleanWithRegex(card.answer),
-        due: card.due
-    }));
-    const sortedCards = mappedCards.sort((a, b) => a.due - b.due);
-    console.error(`[MCP Anki Client] findCardsAndOrder: Returning ${sortedCards.length} cards, sorted by due date.`);
-    return sortedCards;
-}
-/**
- * Formats a simplified query keyword (e.g., "isdue", "isnew") or a deck name
- * into a full Anki search query string.
- * @param simplifiedQuery - The simplified query or deck name.
- * @returns A full Anki search query string.
- */
-function formatQuery(simplifiedQuery) {
-    let ankiQuery = "";
-    if (simplifiedQuery.toLowerCase() === "isdue") {
-        ankiQuery = "is:due";
-    }
-    else if (simplifiedQuery.toLowerCase() === "isnew") {
-        ankiQuery = "is:new";
-    }
-    else if (simplifiedQuery.toLowerCase() === "deckcurrent") {
-        ankiQuery = "deck:current";
-    }
-    else if (simplifiedQuery.includes(":")) {
-        ankiQuery = simplifiedQuery;
-    }
-    else {
-        ankiQuery = simplifiedQuery;
-    }
-    return ankiQuery;
+    throw new Error(`Unknown resource: ${uri}`);
 }
 export function registerResourceHandlers(server, getClient) {
-    /**
-     * Handles requests to list available resources (e.g., predefined card searches).
-     * These resources can then be read to get card data.
-     */
-    server.setRequestHandler(ListResourcesRequestSchema, async () => {
-        return {
-            resources: [
-                {
-                    uri: "anki://search/deckcurrent",
-                    mimeType: "application/json",
-                    name: "Current Deck",
-                    description: "Current Anki deck",
-                },
-                {
-                    uri: "anki://search/isdue",
-                    mimeType: "application/json",
-                    name: "Due cards",
-                    description: "Cards in review and learning waiting to be studied",
-                },
-                {
-                    uri: "anki://search/isnew",
-                    mimeType: "application/json",
-                    name: "New cards",
-                    description: "All unseen cards",
-                },
-            ],
-        };
-    });
-    /**
-     * Handles requests to read the content of a specific resource (e.g., fetch cards for "is:due").
-     * It uses the findCardsAndOrder function to get and process the cards.
-     */
+    server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+        resources: [
+            {
+                uri: "anki://collection/overview",
+                mimeType: "application/json",
+                name: "Study overview",
+                description: "Due counts per deck, reviews today, streak.",
+            },
+            {
+                uri: "anki://search/isdue",
+                mimeType: "application/json",
+                name: "Due cards",
+                description: `Up to ${RESOURCE_CARD_LIMIT} cards waiting to be studied.`,
+            },
+            {
+                uri: "anki://search/isnew",
+                mimeType: "application/json",
+                name: "New cards",
+                description: `Up to ${RESOURCE_CARD_LIMIT} unseen cards.`,
+            },
+            {
+                uri: "anki://search/deckcurrent",
+                mimeType: "application/json",
+                name: "Current deck",
+                description: `Up to ${RESOURCE_CARD_LIMIT} cards of the deck selected in Anki.`,
+            },
+        ],
+    }));
+    server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
+        resourceTemplates: [
+            {
+                uriTemplate: "anki://deck/{deckName}/overview",
+                mimeType: "application/json",
+                name: "Deck overview",
+                description: "Due counts for one deck.",
+            },
+            {
+                uriTemplate: "anki://model/{modelName}",
+                mimeType: "application/json",
+                name: "Note type details",
+                description: "Fields, templates and CSS of a note type.",
+            },
+        ],
+    }));
     server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-        const url = new URL(request.params.uri);
-        const queryParts = url.pathname.split("/");
-        const simplifiedQuery = queryParts[queryParts.length - 1];
-        if (!simplifiedQuery) {
-            throw new Error("Invalid resource URI: unable to extract query from path.");
+        const { uri } = request.params;
+        let data;
+        try {
+            data = await readResource(getClient(), uri);
         }
-        const client = getClient();
-        const ankiQuery = formatQuery(simplifiedQuery);
-        const cards = await findCardsAndOrder(client, ankiQuery);
+        catch (error) {
+            throw new Error(describeError(error));
+        }
         return {
             contents: [
-                {
-                    uri: request.params.uri,
-                    mimeType: "application/json",
-                    text: JSON.stringify(cards),
-                },
+                { uri, mimeType: "application/json", text: JSON.stringify(data) },
             ],
         };
     });

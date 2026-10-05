@@ -10,7 +10,7 @@ MCP server for Anki. This server allows interaction with Anki through the Model 
 
 - Node.js and npm installed.
 - AnkiConnect plugin installed and running in Anki.
-- For audio features: Azure API key (set in `.env` file as `AZURE_API_KEY`) and Anki Media Directory (set as `ANKI_MEDIA_DIR`).
+- For audio features: Azure API key (set in `.env` file as `AZURE_API_KEY`). Generated audio is saved to the active profile's `collection.media` folder through AnkiConnect, so no media path needs to be configured.
 
 ## Setup and Execution
 
@@ -53,20 +53,13 @@ Alternatively, you can run locally via source code using these instructions:
 
 4. **Setup for Audio Features (If you want to use audio tools):**
 
-   Create a .env file in the root directory with your Azure API key and Anki media directory:
+   Create a .env file in the root directory with your Azure API key:
 
    ```
    AZURE_API_KEY=your_azure_api_key_here
-   ANKI_MEDIA_DIR=path/to/your/anki/media/directory
    ```
-   
-   For Anki media directory, use the path to your Anki collection.media folder. This is where audio files will be stored. If you have trouble, paste it directly into the code.
-   
-   - Windows example: `C:\Users\username\AppData\Roaming\Anki2\User 1\collection.media`
-   - macOS example: `/Users/username/Library/Application Support/Anki2/User 1/collection.media`
-   - Linux example: `/home/username/.local/share/Anki2/User 1/collection.media`
-   
-   **Note:** The ANKI_MEDIA_DIR is required for audio generation to work properly as Anki needs to find the audio files in its media collection.
+
+   Generated audio files are stored in the active Anki profile's `collection.media` folder through AnkiConnect, so no media directory needs to be configured.
 
 5. **Integrate with Cursor settings (for local execution):**
 
@@ -109,7 +102,7 @@ Alternatively, you can run locally via source code using these instructions:
 
    3. **Configure environment variables:**
 
-      When prompted during installation, provide your `AZURE_API_KEY` and `ANKI_MEDIA_DIR` (the path to your Anki `collection.media` folder). These are required for audio features and media file handling.
+      When prompted during installation, provide your `AZURE_API_KEY`. It is only required for the audio tools.
 
    That’s it! No manual configuration is needed—Claude Desktop will manage the server for you once the `.mcpb` bundle is installed.
    **macOS / Linux:**
@@ -141,158 +134,102 @@ If you want one-click installation inside Claude Desktop, you can package this s
    npm run pack:mcpb
    ```
 
-The script stages the compiled server (`build/`), copies runtime dependencies, and produces `dist/anki-mcp.mcpb`. Drag that file into Claude Desktop's Settings → Extensions panel to install. When prompted, provide the Azure Speech API key and Anki media directory so audio tools can save files in your `collection.media` folder.
+The script stages the compiled server (`build/`), copies runtime dependencies, and produces `dist/anki-mcp.mcpb`. Drag that file into Claude Desktop's Settings → Extensions panel to install. When prompted, provide the Azure Speech API key if you want to use the audio tools.
+
+## Configuration
+
+All environment variables are optional. Put them in a `.env` file in the project folder or pass them through your MCP client.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `AZURE_API_KEY` | – | Enables the audio tools (Azure Text-to-Speech). |
+| `AZURE_REGION` | `eastus` | Azure Speech region. |
+| `ANKI_CONNECT_HOST` | `http://127.0.0.1` | AnkiConnect host. |
+| `ANKI_CONNECT_PORT` | `8765` | AnkiConnect port. |
+| `ANKI_CONNECT_KEY` | – | AnkiConnect API key, if you set one in the add-on config. |
+
+## Development
+
+```bash
+npm test           # unit + in-memory MCP server tests (no Anki needed)
+npm run inspector  # try the tools interactively
+```
 
 ## Available Tools
 
-To debug the tools, use
+Every tool is annotated as read-only, write or destructive, so clients like Claude Desktop can auto-approve reads and ask before destructive changes. Errors (including "Anki is not running") come back as readable tool results.
 
-```
-npm run inspector
-```
+Most bulk tools select cards or notes the same way: `deckName` (subdecks included), `tags` (matches any), `query` (any [Anki search](https://docs.ankiweb.net/searching.html), ANDed), or explicit `cardIds` / `noteIds`. Write tools accept `dryRun: true` to preview the change first.
 
-The server provides the following tools for interacting with Anki:
+### Studying
 
-- `update_cards`:
+| Tool | What it does |
+| --- | --- |
+| `get_study_overview` | Today's new/learning/review counts per deck, cards reviewed today, streak, 7/30-day totals. |
+| `get_due_cards` / `get_new_cards` | `num` cards to study (optionally from one `deckName`), with the interval each button would give. |
+| `answer_cards` | Record answers (`cardId`, `ease` 1-4) and get each card's new interval. *(Previously `update_cards`.)* |
+| `find_leeches` | Weakest cards (leech tag / many lapses), ranked by lapses and ease. |
+| `get_card_history` | Full review log of up to 20 cards. |
+| `get_retention_stats` | True retention (young/mature), reviews per day and time spent for a deck over N days. |
+| `undo` | Undo the last action in Anki. |
 
-  - Description: After the user answers cards you've quizzed them on, use this tool to mark them answered and update their ease.
-  - Input: An array of answers, each with `cardId` (number) and `ease` (number, 1-4).
+### Selecting and scheduling cards
 
-- `add_card`:
+| Tool | What it does |
+| --- | --- |
+| `find_cards` | Paginated search (`query`, `limit`, `offset`); pick the sections to return with `include`: `question`, `answer`, `fields`, `stats`. |
+| `suspend_cards` / `unsuspend_cards` | Deactivate/reactivate cards, e.g. all cards with tag X in deck Y. Scheduling is preserved. Pass a `label` when suspending (notes get the tag `paused::<label>`) and `unsuspend_cards { label }` later resumes exactly that group, leaving cards suspended for other reasons alone. |
+| `move_cards` | Move cards to `targetDeck` (created if missing). |
+| `reschedule_cards` | `set_due_date` (`days`: `0`, `1!`, `3-7`), `forget` (reset to new) or `relearn`. |
 
-  - Description: Create a NEW flashcard in Anki. Use ONLY for creating new cards, NOT for updating existing ones (will throw an error if the card already exists). For updating existing cards, use `update_note_fields` with the noteId instead. Note content uses HTML.
-    - Line breaks: `<br>`
-    - Code: `<pre style="background-color: transparent; padding: 10px; border-radius: 5px;">`
-    - Lists: `<ol>` and `<li>`
-    - Bold: `<strong>`
-    - Italic: `<em>`
-  - Input:
-    - `fields`: (object) An object where keys are field names (e.g., "Hanzi", "Pinyin") and values are their HTML content.
-    - `modelName`: (string) The name of the Anki note type (model) to use.
-    - `deckName`: (optional string) The name of the deck to add the card to. Defaults to the current deck or 'Default'.
-    - `tags`: (optional array of strings) A list of tags to add to the note.
+### Creating and editing notes
 
-- `add_card_with_audio`:
+| Tool | What it does |
+| --- | --- |
+| `add_card` | Create one note. |
+| `add_bulk` | Create many notes; duplicates/invalid notes are skipped and reported with the reason. |
+| `add_cloze_cards` | Create cloze notes from text plus `terms` to hide, or text with `{{c1::...}}` markup. |
+| `update_note_fields` / `bulk_update_notes` | Edit fields of existing notes. |
+| `find_and_replace` | Plain or regex replace across notes, optionally limited to some `fields`. |
+| `manage_tags` | `list` (with a filter: tag counts), `add`, `remove`, `rename`, `clear_unused`. |
+| `add_image` | Add an image to a field from a `url`, local `path` or base64 `data`. |
+| `delete_notes` | Two-step delete: the first call previews and returns a `confirmToken`, the second call (with the token) deletes. |
 
-  - Description: Create a NEW flashcard in Anki with automatically generated audio from Azure TTS. Use ONLY for creating new cards, NOT for updating existing ones (will throw an error if the card already exists). For updating audio on existing cards, use `update_card_with_audio` with the noteId instead.
-  - Input:
-    - `fields`, `modelName`, `deckName`, `tags`: Same as `add_card`.
-    - `sourceField`: (string) Field name containing the text to generate audio from.
-    - `audioField`: (string) Field name where the generated audio will be stored.
-    - `language`: (optional string) Language code for TTS (e.g., 'en', 'es', 'fr'). Defaults to 'en'.
-  - Supported languages: en, es, fr, de, it, ja, ko, pt, ru, zh, ar, nl, hi, tr, pl, sv, fi, da, no, cs, hu, el, he, th, vi, id, ms, ro.
+### Audio (requires `AZURE_API_KEY`)
 
-- `update_card_with_audio`:
+| Tool | What it does |
+| --- | --- |
+| `add_card_with_audio` | Create a note with audio generated from `sourceField` into `audioField`. |
+| `update_card_with_audio` | Generate audio for one existing note. |
+| `bulk_generate_audio` | Generate audio for many notes (by default only those with an empty audio field), `limit` per call. |
 
-  - Description: Update an EXISTING card by generating audio from a specified field and adding it to an audio field. Use ONLY for cards that already exist (you must have the noteId). For creating new cards with audio, use `add_card_with_audio` instead.
-  - Input:
-    - `noteId`: (number) The ID of the Anki note to update.
-    - `sourceField`: (string) Field name containing the text to generate audio from.
-    - `audioField`: (string) Field name where the generated audio will be stored.
-    - `language`: (optional string) Language code for TTS. Defaults to 'en'.
+Supported languages: en, es, fr, de, it, ja, ko, pt, pt-PT, ru, zh, ar, nl, hi, tr, pl, sv, fi, da, no, cs, hu, el, he, th, vi, id, ms, ro.
 
-- `get_due_cards`:
+### Decks and note types
 
-  - Description: Returns a given number of cards due for review.
-  - Input: `num` (number).
+| Tool | What it does |
+| --- | --- |
+| `get_deck_names` / `create_deck` | List or create decks. |
+| `get_deck_model_info` | Which note types a deck uses (call before adding cards to it). |
+| `get_model_names` / `get_model_details` | List note types / fields, templates and CSS of one. |
+| `edit_note_type_field` | `add`, `remove`, `rename` or `reposition` a field. |
+| `update_note_type_templates` / `update_note_type_styling` | Replace templates or CSS. |
+| `create_model` | Create a note type. |
+| `sync` | Sync with AnkiWeb. |
 
-- `get_new_cards`:
+## Prompts
 
-  - Description: Returns a given number of new and unseen cards.
-  - Input: `num` (number).
+| Prompt | What it does |
+| --- | --- |
+| `quiz_me` | Study session: one question at a time, graded and recorded in Anki. |
+| `make_cards` | Turn a text into atomic flashcards (previewed before adding). |
+| `leech_review` | Find the cards you keep forgetting and fix them. |
 
-- `get_deck_names`:
+## Resources
 
-  - Description: Get a list of all Anki deck names.
-  - Input: None.
-
-- `find_cards`:
-
-  - Description: Find cards using a raw Anki search query. Returns detailed card information including fields.
-  - Input: `query` (string, e.g., `'deck:Default -tag:test'`, or `'"deck:My Deck" tag:important'`). To filter for empty fields, use `'-FieldName:_*'` (e.g., `'-Hanzi:_*'`).
-
-- `update_note_fields`:
-
-  - Description: Update specific fields of an EXISTING Anki note. Use ONLY when you already have the noteId of an existing card. For creating new cards, use `add_card` instead.
-  - Input: `noteId` (number), `fields` (object, e.g., `{"Front": "New Q", "Back": "New A"}`).
-
-- `create_deck`:
-
-  - Description: Create a new Anki deck.
-  - Input: `deckName` (string).
-
-- `bulk_update_notes`:
-
-  - Description: **RECOMMENDED FOR MULTIPLE CARDS**: Update specific fields for multiple EXISTING Anki notes in a single operation. Much more efficient than updating cards one by one. Use ONLY when you have noteIds for cards that already exist. For creating new cards in bulk, use `add_bulk` instead. Always complete all updates in a single operation whenever possible.
-  - Input: An array of `notes`, where each note has `noteId` (number) and `fields` (object).
-
-- `get_model_names`:
-
-  - Description: Lists all available Anki note type/model names.
-  - Input: None.
-
-- `get_model_details`:
-
-  - Description: Retrieves the fields, card templates, and CSS styling for a specified note type.
-  - Input: `modelName` (string).
-
-- `get_deck_model_info`:
-
-  - Description: Retrieves information about the note types (models) used within a specified deck. Helps determine if a single model is used, multiple, or if the deck is empty or non-existent.
-  - Input: `deckName` (string).
-  - Output: An object with `deckName`, `status` (e.g., "single_model_found", "multiple_models_found", "no_notes_found", "deck_not_found"), and conditionally `modelName` (string) or `modelNames` (array of strings).
-
-- `add_note_type_field`:
-
-  - Description: Adds a new field to a note type.
-  - Input: `modelName` (string), `fieldName` (string).
-
-- `remove_note_type_field`:
-
-  - Description: Removes an existing field from a note type.
-  - Input: `modelName` (string), `fieldName` (string).
-
-- `rename_note_type_field`:
-
-  - Description: Renames a field in a note type.
-  - Input: `modelName` (string), `oldFieldName` (string), `newFieldName` (string).
-
-- `reposition_note_type_field`:
-
-  - Description: Changes the order (index) of a field in a note type.
-  - Input: `modelName` (string), `fieldName` (string), `index` (number).
-
-- `update_note_type_templates`:
-
-  - Description: Updates the HTML templates (e.g., front and back) for the cards of a note type.
-  - Input: `modelName` (string), `templates` (object, e.g., `{"Card 1": {"Front": "html", "Back": "html"}}`).
-
-- `update_note_type_styling`:
-
-  - Description: Updates the CSS styling for a note type.
-  - Input: `modelName` (string), `css` (string).
-
-- `create_model`:
-
-  - Description: Creates a new Anki note type (model).
-  - Input: `modelName` (string), `fieldNames` (array of strings), `cardTemplates` (array of objects, each with `Name`, `Front`, `Back` HTML strings), `css` (optional string), `isCloze` (optional boolean, defaults to false), `modelType` (optional string, defaults to 'Standard').
-
-- `add_bulk`:
-
-  - Description: **RECOMMENDED FOR MULTIPLE CARDS**: Adds multiple NEW flashcards to Anki in a single operation. Much more efficient than adding cards one by one. Use ONLY for creating new cards, NOT for updating existing ones (will throw errors for any cards that already exist). For updating existing cards, use `bulk_update_notes` with noteIds instead. Always complete all additions in a single operation whenever possible. Must use HTML formatting for card content.
-  - Input: An array of `notes`, where each note object has:
-    - `fields`: (object) An object where keys are field names and values are their HTML content.
-    - `modelName`: (string) The name of the Anki note type (model) to use for this note.
-    - `deckName`: (optional string) The name of the deck for this note. Defaults to 'Default'.
-    - `tags`: (optional array of strings) A list of tags for this note.
-
-- `sync`:
-
-  - Description: Triggers a sync of the local Anki collection with AnkiWeb, the same as clicking the sync button in Anki. Requires the user to be logged into AnkiWeb in the Anki desktop app.
-
-- `undo`:
-
-  - Description: Undo the most recent action in Anki's collection — a card review, a field edit, a suspend, etc. Only undoes one action at a time; call repeatedly to undo further back.
-  - Input: None.
+- `anki://collection/overview` – study overview.
+- `anki://search/isdue`, `anki://search/isnew`, `anki://search/deckcurrent` – up to 50 cards each.
+- `anki://deck/{deckName}/overview` – due counts for one deck.
+- `anki://model/{modelName}` – fields, templates and CSS of a note type.
 
 More information can be found here [Anki Integration | Smithery](https://smithery.ai/server/@nietus/anki-mcp)

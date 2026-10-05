@@ -2,9 +2,9 @@
   "manifest_version": "0.1",
   "name": "anki-mcp",
   "display_name": "Anki MCP",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Manage Anki decks, cards, and audio from Claude Desktop via MCP.",
-  "long_description": "Anki MCP exposes the AnkiConnect API through the Model Context Protocol. Claude can review due cards, add new notes, update deck metadata, and optionally generate Azure Speech audio straight into your collection.media directory.",
+  "long_description": "Anki MCP exposes the AnkiConnect API through the Model Context Protocol. Claude can quiz you on due cards, track streaks and retention, find leeches, add and clean up notes, manage tags and decks, suspend cards by tag, and optionally generate Azure Speech audio.",
   "author": {
     "name": "nietus"
   },
@@ -23,8 +23,7 @@
       "command": "node",
       "args": ["${__dirname}/server/client.js"],
       "env": {
-        "AZURE_API_KEY": "${user_config.azure_api_key}",
-        "ANKI_MEDIA_DIR": "${user_config.anki_media_dir}"
+        "AZURE_API_KEY": "${user_config.azure_api_key}"
       }
     }
   },
@@ -34,12 +33,6 @@
       "title": "Azure Speech API Key",
       "description": "Required for the audio generation tools. Leave blank to disable audio.",
       "sensitive": true,
-      "required": false
-    },
-    "anki_media_dir": {
-      "type": "directory",
-      "title": "Anki Media Directory",
-      "description": "Path to your Anki collection.media folder so generated audio files are saved in the right place.",
       "required": false
     }
   }
