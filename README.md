@@ -1,7 +1,6 @@
 # anki-mcp
 
 [![tests](https://github.com/nietus/anki-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/nietus/anki-mcp/actions/workflows/test.yml)
-[![smithery badge](https://smithery.ai/badge/@nietus/anki-mcp)](https://smithery.ai/server/@nietus/anki-mcp)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Study and manage your [Anki](https://apps.ankiweb.net/) collection by talking to Claude (or any MCP client). 35 tools over [AnkiConnect](https://ankiweb.net/shared/info/2055492159): get quizzed in chat, see what is due and how your retention is going, find the cards you keep forgetting, create and clean up notes in bulk, and pause whole groups of cards until you want them back.
